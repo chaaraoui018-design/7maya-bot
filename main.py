@@ -17,16 +17,16 @@ from difflib import SequenceMatcher
 
 TOKEN = os.environ.get("DISCORD")
 
-# روم يسمح بالروابط (يتم حذفها بعد 5 ثواني)
+# روم يسمح بالروابط مؤقتاً
 ALLOWED_CHANNEL_ID = 1403040565137899733
 
-# رابط الريندر
+# رابط الاستضافة
 SELF_PING_URL = "https://sevenmaya-bot.onrender.com"
 
-# مدة التايم اوت
+# مدة التايم أوت
 TIMEOUT_DURATION = timedelta(hours=1)
 
-# كول داون التحذير
+# مدة التحذير قبل التايم أوت
 WARNING_COOLDOWN = timedelta(hours=1)
 
 if not TOKEN:
@@ -50,7 +50,9 @@ def health():
     }
 
 def run_flask():
+
     port = int(os.environ.get("PORT", 10000))
+
     app.run(
         host="0.0.0.0",
         port=port,
@@ -66,11 +68,7 @@ class MyBot(commands.Bot):
 
     def __init__(self):
 
-        intents = discord.Intents.default()
-        intents.message_content = True
-        intents.members = True
-        intents.guilds = True
-        intents.messages = True
+        intents = discord.Intents.all()
 
         super().__init__(
             command_prefix="!",
@@ -78,12 +76,11 @@ class MyBot(commands.Bot):
             help_command=None
         )
 
-        # تخزين آخر التحذيرات
         self.last_link_time = {}
         self.last_badword_time = {}
 
         # =========================
-        # الكلمات الحساسة
+        # الكلمات الممنوعة
         # =========================
 
         self.BAD_WORDS = [
@@ -187,19 +184,14 @@ class MyBot(commands.Bot):
             "~":"",
             "`":"",
             "?":"",
-            ".":"",
             ",":"",
-            "-":"",
             "_":"",
-            ":":"",
             ";":"",
             "'":"",
             "\"":"",
-            "/":"",
             "\\":"",
             "=":"",
-            "%":"",
-            " ":""
+            "%":""
         }
 
     # =========================
@@ -207,8 +199,6 @@ class MyBot(commands.Bot):
     # =========================
 
     async def setup_hook(self):
-
-        print(f"Logged as {self.user}")
 
         self.update_status.start()
         self.self_ping.start()
@@ -245,8 +235,8 @@ class MyBot(commands.Bot):
             print("Status update failed:", e)
 
     @update_status.before_loop
-    async def before_status_update(self):
-        await self.wait_until_ready()
+    async def before_status_update():
+        await bot.wait_until_ready()
 
     # =========================
     # Self Ping
@@ -273,8 +263,8 @@ class MyBot(commands.Bot):
             print("Self Ping Failed:", e)
 
     @self_ping.before_loop
-    async def before_self_ping(self):
-        await self.wait_until_ready()
+    async def before_self_ping():
+        await bot.wait_until_ready()
 
     # =========================
     # تنظيف الكاش
@@ -303,11 +293,11 @@ class MyBot(commands.Bot):
             print("Cleanup error:", e)
 
     @cleanup_cache.before_loop
-    async def before_cleanup(self):
-        await self.wait_until_ready()
+    async def before_cleanup():
+        await bot.wait_until_ready()
 
     # =========================
-    # تنظيف النصوص
+    # تنظيف النص
     # =========================
 
     def normalize_text(self, text: str) -> str:
@@ -327,20 +317,16 @@ class MyBot(commands.Bot):
             if not unicodedata.combining(c)
         )
 
-        # إزالة التطويل
         text = text.replace("ـ", "")
 
-        # إزالة المسافات
         text = re.sub(r"\s+", "", text)
 
-        # إزالة التكرار
         text = re.sub(
             r"(.)\1{2,}",
             r"\1",
             text
         )
 
-        # إبقاء الحروف فقط
         text = re.sub(
             r"[^a-z0-9\u0621-\u064A]+",
             "",
@@ -374,7 +360,7 @@ class MyBot(commands.Bot):
             return False
 
     # =========================
-    # كشف الكلمات الحساسة
+    # كشف الكلمات المسيئة
     # =========================
 
     def contains_bad_word(self, text: str) -> bool:
@@ -393,11 +379,9 @@ class MyBot(commands.Bot):
 
             bad_norm = self.normalize_text(bad)
 
-            # تطابق مباشر
             if bad_norm in normalized:
                 return True
 
-            # تطابق مشابه
             for word in words:
 
                 if self.is_similar(
@@ -437,7 +421,7 @@ class MyBot(commands.Bot):
 
         full_content = message.content or ""
 
-        # فحص الامبيد
+        # embeds
         for embed in message.embeds:
 
             if embed.url:
@@ -449,67 +433,96 @@ class MyBot(commands.Bot):
             if embed.title:
                 full_content += f" {embed.title}"
 
-        # فحص الأزرار
-        for row in message.components:
+        # buttons
+        try:
 
-            for item in row.children:
+            for row in message.components:
 
-                try:
-                    if item.url:
+                for item in row.children:
+
+                    if hasattr(item, "url") and item.url:
                         full_content += f" {item.url}"
-                except:
-                    pass
 
-        content = self.normalize_text(full_content)
+        except:
+            pass
+
+        raw_content = full_content.lower()
+
+        normalized = self.normalize_text(full_content)
+
+        # السماح بروابط سبوتيفاي
+        for domain in spotify_whitelist:
+
+            if domain in raw_content:
+                return False
 
         # markdown links
         markdown_links = re.findall(
             r"\[.*?\]\((.*?)\)",
-            full_content
+            raw_content
         )
 
         for link in markdown_links:
 
             if not any(
-                domain in self.normalize_text(link)
+                domain in link
                 for domain in spotify_whitelist
             ):
                 return True
 
         patterns = [
 
-            r"h\s*t\s*t\s*p\s*s?\s*:\s*/\s*/",
+            r"https?:\/\/[^\s]+",
 
-            r"w\s*w\s*w\s*\.",
+            r"www\.[^\s]+",
 
-            r"https?://",
+            r"\b[a-zA-Z0-9-]+\.(com|net|org|gg|io|me|co|xyz|info|app|site|store|online|tech|dev|link|ru|tk)\b",
 
-            r"[a-z0-9\-]+\.(com|net|org|gg|io|me|co|xyz|info|app|site|store|online|tech|dev|link|ru|tk)",
+            r"discord\.gg\/[^\s]+",
 
-            r"d\s*i\s*s\s*c\s*o\s*r\s*d\s*\.\s*g\s*g",
+            r"discord\.com\/invite\/[^\s]+",
 
-            r"d\s*i\s*s\s*c\s*o\s*r\s*d\s*\.\s*c\s*o\s*m"
+            r"h\s*t\s*t\s*p",
+
+            r"w\s*w\s*w"
         ]
 
         for pattern in patterns:
 
-            if re.search(pattern, content):
+            if re.search(
+                pattern,
+                raw_content,
+                re.IGNORECASE
+            ):
                 return True
 
+        normalized_patterns = [
+
+            "https",
+            "http",
+            "www",
+            "discordgg",
+            "discordcominvite"
+        ]
+
+        for p in normalized_patterns:
+
+            if p in normalized:
+                return True
+
+        # shorteners
         for short in shorteners:
 
-            if short in content:
+            if short in raw_content:
                 return True
 
-        # فحص الملفات
+        # attachments
         for attachment in message.attachments:
 
-            filename = self.normalize_text(
-                attachment.filename
-            )
+            filename = attachment.filename.lower()
 
             if re.search(
-                patterns[3],
+                r"\.(com|net|org|gg|io|xyz|ru|tk)",
                 filename
             ):
                 return True
@@ -517,7 +530,7 @@ class MyBot(commands.Bot):
         return False
 
     # =========================
-    # إرسال رسالة تحذير
+    # إرسال تحذير
     # =========================
 
     async def send_warning(
@@ -546,7 +559,7 @@ class MyBot(commands.Bot):
             print("Warning send error:", e)
 
     # =========================
-    # تنفيذ تايم أوت
+    # تايم أوت
     # =========================
 
     async def apply_timeout(
@@ -572,7 +585,7 @@ class MyBot(commands.Bot):
             return False
 
     # =========================
-    # التعامل مع الرسائل
+    # استقبال الرسائل
     # =========================
 
     async def on_message(
@@ -590,7 +603,7 @@ class MyBot(commands.Bot):
 
         now = datetime.now(UTC)
 
-        # تجاهل أصحاب الصلاحيات
+        # تجاهل الإدارة
         if any(
             role.permissions.manage_messages
             for role in message.author.roles
@@ -661,7 +674,7 @@ class MyBot(commands.Bot):
             return
 
         # =========================
-        # حماية الكلمات الحساسة
+        # الكلمات المسيئة
         # =========================
 
         if self.contains_bad_word(message.content):
@@ -673,7 +686,6 @@ class MyBot(commands.Bot):
 
             last_bad = self.last_badword_time.get(user_id)
 
-            # أول مخالفة
             if (
                 not last_bad or
                 (now - last_bad) > WARNING_COOLDOWN
@@ -707,10 +719,6 @@ class MyBot(commands.Bot):
             self.last_badword_time[user_id] = now
             return
 
-        # =========================
-        # الأوامر
-        # =========================
-
         await self.process_commands(message)
 
 # =========================
@@ -740,7 +748,10 @@ async def ping(ctx):
 @commands.has_permissions(administrator=True)
 async def say(ctx, *, text):
 
-    await ctx.message.delete()
+    try:
+        await ctx.message.delete()
+    except:
+        pass
 
     await ctx.send(text)
 
