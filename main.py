@@ -18,7 +18,7 @@ TOKEN = os.environ.get("DISCORD")
 ALLOWED_CHANNEL_ID = 1403040565137899733
 
 # ضع رابط الريندر هنا
-SELF_PING_URL = "https://midou-cheat.onrender.com"  # <-- عدل هذا
+SELF_PING_URL = "https://sevenmaya-bot.onrender.com"  # <-- عدل هذا
 
 if not TOKEN:
     raise ValueError("Missing DISCORD in environment variables")
