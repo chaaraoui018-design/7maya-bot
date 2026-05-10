@@ -66,7 +66,7 @@ class MyBot(commands.Bot):
             "fuck","shit","bitch","asshole","bastard","dick","douche",
             "cunt","fag","slut","whore","prick","motherfucker",
             "nigger","cock","pussy","twat","jerk","idiot","moron",
-            "dumbass",
+            "dumbass", "نمي",
 
             # Franco
             "9LAWI","9lawi","zok","zb","MOK","mok",
