@@ -805,23 +805,23 @@ async def mute_command(
                 delete_after=6
             )
 
-        if member.top_role >= ctx.author.top_role:
+       if member.top_role > ctx.author.top_role:
 
-            embed = discord.Embed(
-                title="❌ Role Error",
-                description="You cannot mute someone with higher role.",
-                color=0xFF0000
-            )
+    embed = discord.Embed(
+        title="❌ Role Error",
+        description="You cannot mute someone with higher role.",
+        color=0xFF0000
+    )
 
-            try:
-                await ctx.message.delete()
-            except:
-                pass
+    try:
+        await ctx.message.delete()
+    except:
+        pass
 
-            return await ctx.send(
-                embed=embed,
-                delete_after=6
-            )
+    return await ctx.send(
+        embed=embed,
+        delete_after=6
+    )
 
     if member.top_role >= ctx.guild.me.top_role:
 
