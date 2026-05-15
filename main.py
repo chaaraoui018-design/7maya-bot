@@ -82,87 +82,85 @@ class MyBot(commands.Bot):
 
         self.REPLACEMENTS = {
 
-            "@":"a",
-            "4":"a",
-            "à":"a",
-            "á":"a",
-            "â":"a",
-            "ä":"a",
-            "å":"a",
+            "@": "a",
+            "4": "a",
+            "à": "a",
+            "á": "a",
+            "â": "a",
+            "ä": "a",
+            "å": "a",
 
-            "8":"b",
-            "ß":"b",
+            "8": "b",
+            "ß": "b",
 
-            "(":"c",
-            "¢":"c",
-            "©":"c",
-            "ç":"c",
+            "(": "c",
+            "¢": "c",
+            "©": "c",
+            "ç": "c",
 
-            "3":"e",
-            "€":"e",
-            "&":"e",
-            "ë":"e",
-            "è":"e",
-            "é":"e",
-            "ê":"e",
+            "3": "e",
+            "€": "e",
+            "&": "e",
+            "ë": "e",
+            "è": "e",
+            "é": "e",
+            "ê": "e",
 
-            "6":"g",
-            "9":"g",
+            "6": "g",
+            "9": "g",
 
-            "#":"h",
+            "#": "h",
 
-            "!":"i",
-            "1":"i",
-            "¡":"i",
-            "|":"i",
-            "í":"i",
-            "î":"i",
-            "ï":"i",
-            "ì":"i",
+            "!": "i",
+            "1": "i",
+            "¡": "i",
+            "|": "i",
+            "í": "i",
+            "î": "i",
+            "ï": "i",
+            "ì": "i",
 
-            "£":"l",
-            "¬":"l",
+            "£": "l",
+            "¬": "l",
 
-            "0":"o",
-            "ò":"o",
-            "ó":"o",
-            "ô":"o",
-            "ö":"o",
-            "ø":"o",
+            "0": "o",
+            "ò": "o",
+            "ó": "o",
+            "ô": "o",
+            "ö": "o",
+            "ø": "o",
 
-            "$":"s",
-            "5":"s",
-            "§":"s",
-            "š":"s",
+            "$": "s",
+            "5": "s",
+            "§": "s",
+            "š": "s",
 
-            "7":"t",
-            "+":"t",
-            "†":"t",
+            "7": "t",
+            "+": "t",
+            "†": "t",
 
-            "2":"z",
+            "2": "z",
 
-            "¥":"y",
+            "¥": "y",
 
-            "*":"",
-            "^":"",
-            "~":"",
-            "`":"",
-            "?":"",
-            ",":"",
-            "_":"",
-            ";":"",
-            "'":"",
-            "\"":"",
-            "\\":"",
-            "=":"",
-            "%":""
+            "*": "",
+            "^": "",
+            "~": "",
+            "`": "",
+            "?": "",
+            ",": "",
+            "_": "",
+            ";": "",
+            "'": "",
+            "\"": "",
+            "\\": "",
+            "=": "",
+            "%": ""
         }
 
         self.LINK_REGEX = re.compile(
-
             r"(https?:\/\/|www\.|discord\.gg\/|discord\.com\/invite\/|"
             r"[a-zA-Z0-9-]+\.(com|net|org|gg|io|me|co|xyz|info|app|site|store|online|tech|dev|link|ru|tk))",
-
             re.IGNORECASE
         )
 
@@ -227,8 +225,8 @@ class MyBot(commands.Bot):
             print("Status Error:", e)
 
     @update_status.before_loop
-    async def before_update_status():
-        await bot.wait_until_ready()
+    async def before_update_status(self):
+        await self.wait_until_ready()
 
     # =========================================================
     # SELF PING
@@ -249,16 +247,14 @@ class MyBot(commands.Bot):
                     SELF_PING_URL
                 ) as response:
 
-                    print(
-                        f"[SELF PING] {response.status}"
-                    )
+                    print(f"[SELF PING] {response.status}")
 
         except Exception as e:
             print("Self Ping Error:", e)
 
     @self_ping.before_loop
-    async def before_self_ping():
-        await bot.wait_until_ready()
+    async def before_self_ping(self):
+        await self.wait_until_ready()
 
     # =========================================================
     # CLEAN CACHE
@@ -272,7 +268,6 @@ class MyBot(commands.Bot):
             now = datetime.now(UTC)
 
             self.last_link_time = {
-
                 k: v
                 for k, v in self.last_link_time.items()
                 if (now - v) < timedelta(days=1)
@@ -284,8 +279,8 @@ class MyBot(commands.Bot):
             print("Cache Cleanup Error:", e)
 
     @cleanup_cache.before_loop
-    async def before_cleanup():
-        await bot.wait_until_ready()
+    async def before_cleanup(self):
+        await self.wait_until_ready()
 
     # =========================================================
     # NORMALIZE TEXT
@@ -367,11 +362,13 @@ class MyBot(commands.Bot):
             full_content
         ).replace(" ", "")
 
+        # Spotify whitelist
         for domain in self.SPOTIFY_WHITELIST:
 
             if domain in raw:
                 return False
 
+        # Markdown links
         markdown_links = re.findall(
             r"\[.*?\]\((.*?)\)",
             raw
@@ -385,9 +382,11 @@ class MyBot(commands.Bot):
             ):
                 return True
 
+        # Regex links
         if self.LINK_REGEX.search(raw):
             return True
 
+        # Hidden links
         suspicious = [
 
             "http",
@@ -402,11 +401,13 @@ class MyBot(commands.Bot):
             if item in normalized:
                 return True
 
+        # Shorteners
         for shortener in self.SHORTENERS:
 
             if shortener in raw:
                 return True
 
+        # Attachments
         for attachment in message.attachments:
 
             filename = attachment.filename.lower()
@@ -520,18 +521,18 @@ class MyBot(commands.Bot):
 
         if self.contains_link(message):
 
+            # Allowed room
             if message.channel.id == ALLOWED_CHANNEL_ID:
 
                 try:
-
                     await asyncio.sleep(5)
                     await message.delete()
-
                 except:
                     pass
 
                 return
 
+            # Delete message
             try:
                 await message.delete()
             except:
@@ -539,6 +540,7 @@ class MyBot(commands.Bot):
 
             last_time = self.last_link_time.get(user_id)
 
+            # First warning
             if (
                 not last_time or
                 (now - last_time) > WARNING_COOLDOWN
@@ -557,6 +559,7 @@ class MyBot(commands.Bot):
                     0xFFFF00
                 )
 
+            # Timeout
             else:
 
                 success = await self.apply_timeout(
@@ -743,6 +746,7 @@ async def mute_command(
 
 ):
 
+    # Permissions
     if (
 
         ctx.author.id not in ALLOWED_MUTE_USERS
@@ -767,6 +771,7 @@ async def mute_command(
             delete_after=6
         )
 
+    # Self mute
     if member.id == ctx.author.id:
 
         embed = discord.Embed(
@@ -785,7 +790,11 @@ async def mute_command(
             delete_after=6
         )
 
-    if member.guild.owner_id == member.id and ctx.author.id != ctx.guild.owner_id:
+    # Owner protection
+    if (
+        member.guild.owner_id == member.id
+        and ctx.author.id != ctx.guild.owner_id
+    ):
 
         embed = discord.Embed(
             title="❌ Invalid Target",
@@ -803,9 +812,8 @@ async def mute_command(
             delete_after=6
         )
 
-    if (
-    member.top_role >= ctx.guild.self_member.top_role
-):
+    # Moderator role check
+    if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
 
         embed = discord.Embed(
             title="❌ Role Error",
@@ -823,10 +831,11 @@ async def mute_command(
             delete_after=6
         )
 
+    # Bot role check
     if member.top_role >= ctx.guild.me.top_role:
 
         embed = discord.Embed(
-            title="❌ Role Error",
+            title="❌ Bot Role Error",
             description="My role is lower than the target user.",
             color=0xFF0000
         )
@@ -841,6 +850,7 @@ async def mute_command(
             delete_after=6
         )
 
+    # Duration
     delta = parse_duration(duration)
 
     if not delta:
@@ -861,6 +871,7 @@ async def mute_command(
             delete_after=6
         )
 
+    # Apply timeout
     try:
 
         until = utcnow() + delta
@@ -878,13 +889,13 @@ async def mute_command(
 
         embed.add_field(
             name="User",
-            value=f"{member.mention}",
+            value=member.mention,
             inline=True
         )
 
         embed.add_field(
             name="Moderator",
-            value=f"{ctx.author.mention}",
+            value=ctx.author.mention,
             inline=True
         )
 
@@ -937,10 +948,11 @@ async def unmute_command(
 
 ):
 
-   if (
-    ctx.author.id != ctx.guild.owner_id
-    and ctx.author.id not in ALLOWED_MUTE_USERS
-):
+    if (
+        ctx.author.id != ctx.guild.owner_id
+        and ctx.author.id not in ALLOWED_MUTE_USERS
+        and not ctx.author.guild_permissions.administrator
+    ):
 
         embed = discord.Embed(
             title="❌ Permission Denied",
