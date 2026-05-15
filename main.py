@@ -813,7 +813,10 @@ async def mute_command(
         )
 
     # Moderator role check
-    if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
+    if (
+        member.top_role >= ctx.author.top_role
+        and ctx.author.id != ctx.guild.owner_id
+    ):
 
         embed = discord.Embed(
             title="❌ Role Error",
