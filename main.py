@@ -671,7 +671,15 @@ async def addmute(ctx, member: discord.Member):
             color=0xFFFF00
         )
 
-        return await ctx.send(embed=embed)
+        return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     ALLOWED_MUTE_USERS.add(member.id)
 
@@ -681,7 +689,15 @@ async def addmute(ctx, member: discord.Member):
         color=0x00FF00
     )
 
-    await ctx.send(embed=embed)
+    try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
 # =========================================================
 # REMOVE MUTE PERMISSION
@@ -704,7 +720,15 @@ async def removemute(ctx, member: discord.Member):
             color=0xFF0000
         )
 
-        return await ctx.send(embed=embed)
+        return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     ALLOWED_MUTE_USERS.remove(member.id)
 
@@ -714,7 +738,15 @@ async def removemute(ctx, member: discord.Member):
         color=0x00FF00
     )
 
-    await ctx.send(embed=embed)
+    try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
 # =========================================================
 # MUTE COMMAND
@@ -749,7 +781,15 @@ async def mute_command(
             color=0xFF0000
         )
 
-        return await ctx.send(embed=embed)
+        return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     # =====================================================
     # CHECK SELF
@@ -763,7 +803,15 @@ async def mute_command(
             color=0xFF0000
         )
 
-        return await ctx.send(embed=embed)
+        return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     # =====================================================
     # OWNER CAN MUTE ANYONE
@@ -779,7 +827,15 @@ async def mute_command(
                 color=0xFF0000
             )
 
-            return await ctx.send(embed=embed)
+            return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
         if member.top_role >= ctx.author.top_role:
 
@@ -789,7 +845,15 @@ async def mute_command(
                 color=0xFF0000
             )
 
-            return await ctx.send(embed=embed)
+            return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     # =====================================================
     # BOT ROLE CHECK
@@ -803,7 +867,15 @@ async def mute_command(
             color=0xFF0000
         )
 
-        return await ctx.send(embed=embed)
+        return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     # =====================================================
     # PARSE TIME
@@ -819,7 +891,15 @@ async def mute_command(
             color=0xFF0000
         )
 
-        return await ctx.send(embed=embed)
+        return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     # =====================================================
     # APPLY MUTE
@@ -876,7 +956,15 @@ async def mute_command(
             color=0xFF0000
         )
 
-        await ctx.send(embed=embed)
+        try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
 # =========================================================
 # UNMUTE COMMAND
@@ -904,7 +992,15 @@ async def unmute_command(
             color=0xFF0000
         )
 
-        return await ctx.send(embed=embed)
+        return try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
     try:
 
@@ -936,7 +1032,15 @@ async def unmute_command(
             color=0xFF0000
         )
 
-        await ctx.send(embed=embed)
+        try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
 # =========================================================
 # BASIC COMMANDS
@@ -953,7 +1057,15 @@ async def ping(ctx):
         color=0x00FF00
     )
 
-    await ctx.send(embed=embed)
+   try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -979,7 +1091,15 @@ async def servers(ctx):
         color=0x3498db
     )
 
-    await ctx.send(embed=embed)
+    try:
+    await ctx.message.delete()
+except:
+    pass
+
+await ctx.send(
+    embed=embed,
+    delete_after=6
+)
 
 # =========================================================
 # ERRORS
