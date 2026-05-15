@@ -23,7 +23,7 @@ ALLOWED_CHANNEL_ID = 1403040565137899733
 # رابط الاستضافة
 SELF_PING_URL = "https://sevenmaya-bot.onrender.com"
 
-# مدة التايم أوت
+# مدة التايم أوت التلقائي للروابط
 TIMEOUT_DURATION = timedelta(hours=1)
 
 # مدة التحذير
@@ -82,15 +82,7 @@ class MyBot(commands.Bot):
             help_command=None
         )
 
-        # =====================================================
-        # CACHE
-        # =====================================================
-
         self.last_link_time = {}
-
-        # =====================================================
-        # REPLACEMENTS
-        # =====================================================
 
         self.REPLACEMENTS = {
 
@@ -170,10 +162,6 @@ class MyBot(commands.Bot):
             "%":""
         }
 
-        # =====================================================
-        # LINK REGEX
-        # =====================================================
-
         self.LINK_REGEX = re.compile(
 
             r"(https?:\/\/|www\.|discord\.gg\/|discord\.com\/invite\/|"
@@ -181,10 +169,6 @@ class MyBot(commands.Bot):
 
             re.IGNORECASE
         )
-
-        # =====================================================
-        # SHORTENERS
-        # =====================================================
 
         self.SHORTENERS = [
 
@@ -198,10 +182,6 @@ class MyBot(commands.Bot):
             "shorturl.at",
             "tiny.one"
         ]
-
-        # =====================================================
-        # WHITELIST
-        # =====================================================
 
         self.SPOTIFY_WHITELIST = [
 
@@ -322,7 +302,6 @@ class MyBot(commands.Bot):
 
         text = text.lower()
 
-        # remove invisible unicode chars
         text = re.sub(
             r"[\u200B-\u200D\uFEFF]",
             "",
@@ -375,10 +354,6 @@ class MyBot(commands.Bot):
 
         full_content = message.content or ""
 
-        # =====================================================
-        # EMBEDS
-        # =====================================================
-
         for embed in message.embeds:
 
             if embed.url:
@@ -389,10 +364,6 @@ class MyBot(commands.Bot):
 
             if embed.description:
                 full_content += f" {embed.description}"
-
-        # =====================================================
-        # BUTTON URLS
-        # =====================================================
 
         if hasattr(message, "components"):
 
@@ -416,18 +387,10 @@ class MyBot(commands.Bot):
             full_content
         ).replace(" ", "")
 
-        # =====================================================
-        # SPOTIFY WHITELIST
-        # =====================================================
-
         for domain in self.SPOTIFY_WHITELIST:
 
             if domain in raw:
                 return False
-
-        # =====================================================
-        # MARKDOWN LINKS
-        # =====================================================
 
         markdown_links = re.findall(
             r"\[.*?\]\((.*?)\)",
@@ -442,16 +405,8 @@ class MyBot(commands.Bot):
             ):
                 return True
 
-        # =====================================================
-        # DIRECT LINKS
-        # =====================================================
-
         if self.LINK_REGEX.search(raw):
             return True
-
-        # =====================================================
-        # BYPASS DETECTION
-        # =====================================================
 
         suspicious = [
 
@@ -467,18 +422,10 @@ class MyBot(commands.Bot):
             if item in normalized:
                 return True
 
-        # =====================================================
-        # SHORTENERS
-        # =====================================================
-
         for shortener in self.SHORTENERS:
 
             if shortener in raw:
                 return True
-
-        # =====================================================
-        # ATTACHMENTS
-        # =====================================================
 
         for attachment in message.attachments:
 
@@ -522,7 +469,7 @@ class MyBot(commands.Bot):
             print("Warning Error:", e)
 
     # =========================================================
-    # TIMEOUT
+    # AUTO TIMEOUT
     # =========================================================
 
     async def apply_timeout(
@@ -573,10 +520,16 @@ class MyBot(commands.Bot):
         now = datetime.now(UTC)
 
         # =====================================================
-        # IGNORE ADMINS
+        # IGNORE STAFF / ADMINS / MUTE USERS
         # =====================================================
 
-        if message.author.guild_permissions.manage_messages:
+        if (
+
+            message.author.guild_permissions.manage_messages
+            or message.author.guild_permissions.administrator
+            or user_id in ALLOWED_MUTE_USERS
+
+        ):
 
             await self.process_commands(message)
             return
@@ -587,7 +540,6 @@ class MyBot(commands.Bot):
 
         if self.contains_link(message):
 
-            # روم مسموح مؤقت
             if message.channel.id == ALLOWED_CHANNEL_ID:
 
                 try:
@@ -600,17 +552,12 @@ class MyBot(commands.Bot):
 
                 return
 
-            # حذف الرسالة
             try:
                 await message.delete()
             except:
                 pass
 
             last_time = self.last_link_time.get(user_id)
-
-            # =================================================
-            # WARNING
-            # =================================================
 
             if (
                 not last_time or
@@ -629,10 +576,6 @@ class MyBot(commands.Bot):
 
                     0xFFFF00
                 )
-
-            # =================================================
-            # TIMEOUT
-            # =================================================
 
             else:
 
@@ -653,7 +596,7 @@ class MyBot(commands.Bot):
 
                         f"{message.author.mention} تم اسكاتك بسبب تكرار نشر الروابط.",
 
-                        0xFF0000
+                        0xFFFF00
                     )
 
             self.last_link_time[user_id] = now
@@ -667,10 +610,6 @@ class MyBot(commands.Bot):
 # =========================================================
 
 bot = MyBot()
-
-# =========================================================
-# COMMANDS
-# =========================================================
 
 # =========================================================
 # MUTE PERMISSION SYSTEM
@@ -716,8 +655,13 @@ def parse_duration(duration: str):
 # =========================================================
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def addmute(ctx, member: discord.Member):
+
+    if ctx.author.id != ctx.guild.owner_id:
+
+        return await ctx.send(
+            "❌ فقط مالك السيرفر يستطيع استخدام هذا الامر."
+        )
 
     if member.id in ALLOWED_MUTE_USERS:
 
@@ -744,8 +688,13 @@ async def addmute(ctx, member: discord.Member):
 # =========================================================
 
 @bot.command()
-@commands.has_permissions(administrator=True)
 async def removemute(ctx, member: discord.Member):
+
+    if ctx.author.id != ctx.guild.owner_id:
+
+        return await ctx.send(
+            "❌ فقط مالك السيرفر يستطيع استخدام هذا الامر."
+        )
 
     if member.id not in ALLOWED_MUTE_USERS:
 
@@ -788,8 +737,9 @@ async def mute_command(
 
     if (
 
-        ctx.author.id not in ALLOWED_MUTE_USERS and
-        not ctx.author.guild_permissions.administrator
+        ctx.author.id not in ALLOWED_MUTE_USERS
+        and ctx.author.id != ctx.guild.owner_id
+        and not ctx.author.guild_permissions.administrator
 
     ):
 
@@ -802,7 +752,7 @@ async def mute_command(
         return await ctx.send(embed=embed)
 
     # =====================================================
-    # CHECK TARGET
+    # CHECK SELF
     # =====================================================
 
     if member.id == ctx.author.id:
@@ -815,15 +765,35 @@ async def mute_command(
 
         return await ctx.send(embed=embed)
 
-    if member.guild.owner_id == member.id:
+    # =====================================================
+    # OWNER CAN MUTE ANYONE
+    # =====================================================
 
-        embed = discord.Embed(
-            title="❌ Invalid Target",
-            description="You cannot mute the server owner.",
-            color=0xFF0000
-        )
+    if ctx.author.id != ctx.guild.owner_id:
 
-        return await ctx.send(embed=embed)
+        if member.guild.owner_id == member.id:
+
+            embed = discord.Embed(
+                title="❌ Invalid Target",
+                description="You cannot mute the server owner.",
+                color=0xFF0000
+            )
+
+            return await ctx.send(embed=embed)
+
+        if member.top_role >= ctx.author.top_role:
+
+            embed = discord.Embed(
+                title="❌ Role Error",
+                description="You cannot mute someone with higher role.",
+                color=0xFF0000
+            )
+
+            return await ctx.send(embed=embed)
+
+    # =====================================================
+    # BOT ROLE CHECK
+    # =====================================================
 
     if member.top_role >= ctx.guild.me.top_role:
 
@@ -852,7 +822,7 @@ async def mute_command(
         return await ctx.send(embed=embed)
 
     # =====================================================
-    # APPLY TIMEOUT
+    # APPLY MUTE
     # =====================================================
 
     try:
@@ -866,7 +836,7 @@ async def mute_command(
 
         embed = discord.Embed(
             title="🔇 User Muted",
-            color=0x3498db,
+            color=0xFFFF00,
             timestamp=utcnow()
         )
 
@@ -894,9 +864,7 @@ async def mute_command(
             inline=False
         )
 
-        embed.set_footer(
-            text=f"User ID: {member.id}"
-        )
+       
 
         await ctx.send(embed=embed)
 
@@ -924,8 +892,9 @@ async def unmute_command(
 
     if (
 
-        ctx.author.id not in ALLOWED_MUTE_USERS and
-        not ctx.author.guild_permissions.administrator
+        ctx.author.id not in ALLOWED_MUTE_USERS
+        and ctx.author.id != ctx.guild.owner_id
+        and not ctx.author.guild_permissions.administrator
 
     ):
 
@@ -968,6 +937,10 @@ async def unmute_command(
         )
 
         await ctx.send(embed=embed)
+
+# =========================================================
+# BASIC COMMANDS
+# =========================================================
 
 @bot.command()
 async def ping(ctx):
