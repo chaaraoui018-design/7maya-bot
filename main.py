@@ -7,13 +7,13 @@ import threading
 import re
 import unicodedata
 import aiohttp
+
 from datetime import datetime, timedelta, UTC
 from discord.utils import utcnow
-from difflib import SequenceMatcher
 
-# =========================
-# الإعدادات
-# =========================
+# =========================================================
+# CONFIG
+# =========================================================
 
 TOKEN = os.environ.get("DISCORD")
 
@@ -26,15 +26,15 @@ SELF_PING_URL = "https://sevenmaya-bot.onrender.com"
 # مدة التايم أوت
 TIMEOUT_DURATION = timedelta(hours=1)
 
-# مدة التحذير قبل التايم أوت
+# مدة التحذير
 WARNING_COOLDOWN = timedelta(hours=1)
 
 if not TOKEN:
-    raise ValueError("Missing DISCORD in environment variables")
+    raise ValueError("Missing DISCORD token")
 
-# =========================
-# Flask Server
-# =========================
+# =========================================================
+# FLASK
+# =========================================================
 
 app = Flask(__name__)
 
@@ -44,6 +44,7 @@ def home():
 
 @app.route("/health")
 def health():
+
     return {
         "status": "online",
         "guilds": len(bot.guilds) if "bot" in globals() else 0
@@ -60,15 +61,20 @@ def run_flask():
         use_reloader=False
     )
 
-# =========================
-# Discord Bot
-# =========================
+# =========================================================
+# BOT
+# =========================================================
 
 class MyBot(commands.Bot):
 
     def __init__(self):
 
-        intents = discord.Intents.all()
+        intents = discord.Intents.default()
+
+        intents.guilds = True
+        intents.members = True
+        intents.messages = True
+        intents.message_content = True
 
         super().__init__(
             command_prefix="!",
@@ -76,45 +82,15 @@ class MyBot(commands.Bot):
             help_command=None
         )
 
+        # =====================================================
+        # CACHE
+        # =====================================================
+
         self.last_link_time = {}
-        self.last_badword_time = {}
 
-        # =========================
-        # الكلمات الممنوعة
-        # =========================
-
-        self.BAD_WORDS = [
-
-            # English
-            "fuck","shit","bitch","asshole","bastard","dick","douche",
-            "cunt","fag","slut","whore","prick","motherfucker",
-            "nigger","cock","pussy","twat","jerk","idiot","moron",
-            "dumbass","retard","niga","nigga","fucker","mf",
-
-            # Franco
-            "9lawi","zok","zb","mok","nik","nikmok",
-            "9a7ba","zaml","zebi","nik mok","nayek",
-
-            # Arabic
-            "الطبون","طبون","زبور","الزبور","كلب","نيك",
-            "نيك مك","كس","قحبة","ولد القحبة",
-            "ابن الكلب","حمار","غبي","قذر","حقير",
-            "كافر","زب","زبي","قلاوي","زك",
-            "الزك","نكمك","عطاي","حيوان","منيوك",
-            "خنزير","خائن","متسكع","أرعن","حقيرة",
-            "لعينة","مشين","زانية","أوغاد","أهبل",
-            "لعين","منيك","ترمة","مترم","بقرة",
-            "شرموطة","الشرموطة","العاهرة",
-            "قليل الأدب","ابن الشرموطة",
-            "كس أمك","كس اختك",
-            "ابن القحبة","ابن الزانية",
-            "ابن العاهرة","ابن الحرام","ابن الزنا",
-            "ياكلب","ياحمار","متخلف","تافه"
-        ]
-
-        # =========================
-        # استبدال الرموز
-        # =========================
+        # =====================================================
+        # REPLACEMENTS
+        # =====================================================
 
         self.REPLACEMENTS = {
 
@@ -194,9 +170,49 @@ class MyBot(commands.Bot):
             "%":""
         }
 
-    # =========================
-    # تشغيل البوت
-    # =========================
+        # =====================================================
+        # LINK REGEX
+        # =====================================================
+
+        self.LINK_REGEX = re.compile(
+
+            r"(https?:\/\/|www\.|discord\.gg\/|discord\.com\/invite\/|"
+            r"[a-zA-Z0-9-]+\.(com|net|org|gg|io|me|co|xyz|info|app|site|store|online|tech|dev|link|ru|tk))",
+
+            re.IGNORECASE
+        )
+
+        # =====================================================
+        # SHORTENERS
+        # =====================================================
+
+        self.SHORTENERS = [
+
+            "bit.ly",
+            "tinyurl.com",
+            "t.co",
+            "goo.gl",
+            "is.gd",
+            "cutt.ly",
+            "rebrand.ly",
+            "shorturl.at",
+            "tiny.one"
+        ]
+
+        # =====================================================
+        # WHITELIST
+        # =====================================================
+
+        self.SPOTIFY_WHITELIST = [
+
+            "spotify.com",
+            "open.spotify.com",
+            "spotify.link"
+        ]
+
+    # =========================================================
+    # SETUP
+    # =========================================================
 
     async def setup_hook(self):
 
@@ -207,14 +223,14 @@ class MyBot(commands.Bot):
     async def on_ready(self):
 
         print("=" * 50)
-        print(f"Bot Name : {self.user}")
-        print(f"Bot ID   : {self.user.id}")
-        print(f"Guilds   : {len(self.guilds)}")
+        print(f"Logged as : {self.user}")
+        print(f"Bot ID    : {self.user.id}")
+        print(f"Guilds    : {len(self.guilds)}")
         print("=" * 50)
 
-    # =========================
-    # تحديث الحالة
-    # =========================
+    # =========================================================
+    # STATUS
+    # =========================================================
 
     @tasks.loop(minutes=10)
     async def update_status(self):
@@ -232,15 +248,15 @@ class MyBot(commands.Bot):
             )
 
         except Exception as e:
-            print("Status update failed:", e)
+            print("Status Error:", e)
 
     @update_status.before_loop
-    async def before_status_update():
+    async def before_update_status():
         await bot.wait_until_ready()
 
-    # =========================
-    # Self Ping
-    # =========================
+    # =========================================================
+    # SELF PING
+    # =========================================================
 
     @tasks.loop(minutes=5)
     async def self_ping(self):
@@ -253,22 +269,24 @@ class MyBot(commands.Bot):
                 timeout=timeout
             ) as session:
 
-                async with session.get(SELF_PING_URL) as resp:
+                async with session.get(
+                    SELF_PING_URL
+                ) as response:
 
                     print(
-                        f"[SELF PING] Status: {resp.status}"
+                        f"[SELF PING] {response.status}"
                     )
 
         except Exception as e:
-            print("Self Ping Failed:", e)
+            print("Self Ping Error:", e)
 
     @self_ping.before_loop
     async def before_self_ping():
         await bot.wait_until_ready()
 
-    # =========================
-    # تنظيف الكاش
-    # =========================
+    # =========================================================
+    # CLEAN CACHE
+    # =========================================================
 
     @tasks.loop(hours=6)
     async def cleanup_cache(self):
@@ -278,27 +296,24 @@ class MyBot(commands.Bot):
             now = datetime.now(UTC)
 
             self.last_link_time = {
-                k: v for k, v in self.last_link_time.items()
-                if (now - v) < timedelta(days=1)
-            }
 
-            self.last_badword_time = {
-                k: v for k, v in self.last_badword_time.items()
+                k: v
+                for k, v in self.last_link_time.items()
                 if (now - v) < timedelta(days=1)
             }
 
             print("Cache cleaned")
 
         except Exception as e:
-            print("Cleanup error:", e)
+            print("Cache Cleanup Error:", e)
 
     @cleanup_cache.before_loop
     async def before_cleanup():
         await bot.wait_until_ready()
 
-    # =========================
-    # تنظيف النص
-    # =========================
+    # =========================================================
+    # NORMALIZE TEXT
+    # =========================================================
 
     def normalize_text(self, text: str) -> str:
 
@@ -307,10 +322,20 @@ class MyBot(commands.Bot):
 
         text = text.lower()
 
+        # remove invisible unicode chars
+        text = re.sub(
+            r"[\u200B-\u200D\uFEFF]",
+            "",
+            text
+        )
+
         for old, new in self.REPLACEMENTS.items():
             text = text.replace(old, new)
 
-        text = unicodedata.normalize("NFKD", text)
+        text = unicodedata.normalize(
+            "NFKD",
+            text
+        )
 
         text = ''.join(
             c for c in text
@@ -319,8 +344,6 @@ class MyBot(commands.Bot):
 
         text = text.replace("ـ", "")
 
-        text = re.sub(r"\s+", "", text)
-
         text = re.sub(
             r"(.)\1{2,}",
             r"\1",
@@ -328,195 +351,135 @@ class MyBot(commands.Bot):
         )
 
         text = re.sub(
-            r"[^a-z0-9\u0621-\u064A]+",
+            r"[^a-z0-9\u0621-\u064A\s]+",
             "",
             text
         )
 
+        text = re.sub(
+            r"\s+",
+            " ",
+            text
+        ).strip()
+
         return text
 
-    # =========================
-    # مقارنة الكلمات
-    # =========================
-
-    def is_similar(
-        self,
-        a: str,
-        b: str,
-        threshold: float = 0.80
-    ) -> bool:
-
-        try:
-
-            ratio = SequenceMatcher(
-                None,
-                a,
-                b
-            ).ratio()
-
-            return ratio >= threshold
-
-        except:
-            return False
-
-    # =========================
-    # كشف الكلمات المسيئة
-    # =========================
-
-    def contains_bad_word(self, text: str) -> bool:
-
-        normalized = self.normalize_text(text)
-
-        if not normalized:
-            return False
-
-        words = re.findall(
-            r"[a-z0-9\u0621-\u064A]+",
-            normalized
-        )
-
-        for bad in self.BAD_WORDS:
-
-            bad_norm = self.normalize_text(bad)
-
-            if bad_norm in normalized:
-                return True
-
-            for word in words:
-
-                if self.is_similar(
-                    word,
-                    bad_norm
-                ):
-                    return True
-
-        return False
-
-    # =========================
-    # كشف الروابط
-    # =========================
+    # =========================================================
+    # LINK DETECTION
+    # =========================================================
 
     def contains_link(
         self,
         message: discord.Message
     ) -> bool:
 
-        spotify_whitelist = [
-            "spotify.com",
-            "open.spotify.com",
-            "spotify.link"
-        ]
-
-        shorteners = [
-            "bit.ly",
-            "tinyurl.com",
-            "t.co",
-            "goo.gl",
-            "is.gd",
-            "cutt.ly",
-            "rebrand.ly",
-            "shorturl.at",
-            "tiny.one"
-        ]
-
         full_content = message.content or ""
 
-        # embeds
+        # =====================================================
+        # EMBEDS
+        # =====================================================
+
         for embed in message.embeds:
 
             if embed.url:
                 full_content += f" {embed.url}"
 
-            if embed.description:
-                full_content += f" {embed.description}"
-
             if embed.title:
                 full_content += f" {embed.title}"
 
-        # buttons
-        try:
+            if embed.description:
+                full_content += f" {embed.description}"
 
-            for row in message.components:
+        # =====================================================
+        # BUTTON URLS
+        # =====================================================
 
-                for item in row.children:
+        if hasattr(message, "components"):
 
-                    if hasattr(item, "url") and item.url:
-                        full_content += f" {item.url}"
+            try:
 
-        except:
-            pass
+                for row in message.components:
 
-        raw_content = full_content.lower()
+                    for item in row.children:
 
-        normalized = self.normalize_text(full_content)
+                        if hasattr(item, "url"):
 
-        # السماح بروابط سبوتيفاي
-        for domain in spotify_whitelist:
+                            if item.url:
+                                full_content += f" {item.url}"
 
-            if domain in raw_content:
+            except:
+                pass
+
+        raw = full_content.lower()
+
+        normalized = self.normalize_text(
+            full_content
+        ).replace(" ", "")
+
+        # =====================================================
+        # SPOTIFY WHITELIST
+        # =====================================================
+
+        for domain in self.SPOTIFY_WHITELIST:
+
+            if domain in raw:
                 return False
 
-        # markdown links
+        # =====================================================
+        # MARKDOWN LINKS
+        # =====================================================
+
         markdown_links = re.findall(
             r"\[.*?\]\((.*?)\)",
-            raw_content
+            raw
         )
 
         for link in markdown_links:
 
             if not any(
                 domain in link
-                for domain in spotify_whitelist
+                for domain in self.SPOTIFY_WHITELIST
             ):
                 return True
 
-        patterns = [
+        # =====================================================
+        # DIRECT LINKS
+        # =====================================================
 
-            r"https?:\/\/[^\s]+",
+        if self.LINK_REGEX.search(raw):
+            return True
 
-            r"www\.[^\s]+",
+        # =====================================================
+        # BYPASS DETECTION
+        # =====================================================
 
-            r"\b[a-zA-Z0-9-]+\.(com|net|org|gg|io|me|co|xyz|info|app|site|store|online|tech|dev|link|ru|tk)\b",
+        suspicious = [
 
-            r"discord\.gg\/[^\s]+",
-
-            r"discord\.com\/invite\/[^\s]+",
-
-            r"h\s*t\s*t\s*p",
-
-            r"w\s*w\s*w"
-        ]
-
-        for pattern in patterns:
-
-            if re.search(
-                pattern,
-                raw_content,
-                re.IGNORECASE
-            ):
-                return True
-
-        normalized_patterns = [
-
-            "https",
             "http",
+            "https",
             "www",
             "discordgg",
             "discordcominvite"
         ]
 
-        for p in normalized_patterns:
+        for item in suspicious:
 
-            if p in normalized:
+            if item in normalized:
                 return True
 
-        # shorteners
-        for short in shorteners:
+        # =====================================================
+        # SHORTENERS
+        # =====================================================
 
-            if short in raw_content:
+        for shortener in self.SHORTENERS:
+
+            if shortener in raw:
                 return True
 
-        # attachments
+        # =====================================================
+        # ATTACHMENTS
+        # =====================================================
+
         for attachment in message.attachments:
 
             filename = attachment.filename.lower()
@@ -529,9 +492,9 @@ class MyBot(commands.Bot):
 
         return False
 
-    # =========================
-    # إرسال تحذير
-    # =========================
+    # =========================================================
+    # WARNING
+    # =========================================================
 
     async def send_warning(
         self,
@@ -556,24 +519,30 @@ class MyBot(commands.Bot):
             )
 
         except Exception as e:
-            print("Warning send error:", e)
+            print("Warning Error:", e)
 
-    # =========================
-    # تايم أوت
-    # =========================
+    # =========================================================
+    # TIMEOUT
+    # =========================================================
 
     async def apply_timeout(
         self,
-        member,
-        reason
-    ):
+        member: discord.Member,
+        reason: str
+    ) -> bool:
 
         try:
 
-            until_time = utcnow() + TIMEOUT_DURATION
+            if member.guild.owner_id == member.id:
+                return False
+
+            if member.top_role >= member.guild.me.top_role:
+                return False
+
+            until = utcnow() + TIMEOUT_DURATION
 
             await member.timeout(
-                until_time,
+                until,
                 reason=reason
             )
 
@@ -581,12 +550,12 @@ class MyBot(commands.Bot):
 
         except Exception as e:
 
-            print("Timeout error:", e)
+            print("Timeout Error:", e)
             return False
 
-    # =========================
-    # استقبال الرسائل
-    # =========================
+    # =========================================================
+    # MESSAGE EVENT
+    # =========================================================
 
     async def on_message(
         self,
@@ -603,18 +572,18 @@ class MyBot(commands.Bot):
 
         now = datetime.now(UTC)
 
-        # تجاهل الإدارة
-        if any(
-            role.permissions.manage_messages
-            for role in message.author.roles
-        ):
+        # =====================================================
+        # IGNORE ADMINS
+        # =====================================================
+
+        if message.author.guild_permissions.manage_messages:
 
             await self.process_commands(message)
             return
 
-        # =========================
-        # حماية الروابط
-        # =========================
+        # =====================================================
+        # LINK PROTECTION
+        # =====================================================
 
         if self.contains_link(message):
 
@@ -639,7 +608,10 @@ class MyBot(commands.Bot):
 
             last_time = self.last_link_time.get(user_id)
 
-            # أول مخالفة
+            # =================================================
+            # WARNING
+            # =================================================
+
             if (
                 not last_time or
                 (now - last_time) > WARNING_COOLDOWN
@@ -648,88 +620,354 @@ class MyBot(commands.Bot):
                 self.last_link_time[user_id] = now
 
                 await self.send_warning(
+
                     message.channel,
-                    "⚠️ تحذير من الروابط",
-                    f"{message.author.mention} نشر الروابط ممنوع. المرة القادمة سيتم اسكاتك.",
+
+                    "⚠️ تحذير",
+
+                    f"{message.author.mention} يمنع نشر الروابط. المرة القادمة سيتم اسكاتك.",
+
                     0xFFFF00
                 )
+
+            # =================================================
+            # TIMEOUT
+            # =================================================
 
             else:
 
                 success = await self.apply_timeout(
+
                     message.author,
                     "نشر روابط"
+
                 )
 
                 if success:
 
                     await self.send_warning(
+
                         message.channel,
+
                         "⛔ تم اسكاتك",
+
                         f"{message.author.mention} تم اسكاتك بسبب تكرار نشر الروابط.",
+
                         0xFF0000
                     )
 
             self.last_link_time[user_id] = now
-            return
 
-        # =========================
-        # الكلمات المسيئة
-        # =========================
-
-        if self.contains_bad_word(message.content):
-
-            try:
-                await message.delete()
-            except:
-                pass
-
-            last_bad = self.last_badword_time.get(user_id)
-
-            if (
-                not last_bad or
-                (now - last_bad) > WARNING_COOLDOWN
-            ):
-
-                self.last_badword_time[user_id] = now
-
-                await self.send_warning(
-                    message.channel,
-                    "⚠️ تحذير من الكلمات المسيئة",
-                    f"{message.author.mention} يمنع استخدام الكلمات المسيئة. المرة القادمة سيتم اسكاتك.",
-                    0xFFFF00
-                )
-
-            else:
-
-                success = await self.apply_timeout(
-                    message.author,
-                    "استخدام كلمات مسيئة"
-                )
-
-                if success:
-
-                    await self.send_warning(
-                        message.channel,
-                        "⛔ تم اسكاتك",
-                        f"{message.author.mention} تم اسكاتك ساعة بسبب تكرار استخدام الكلمات المسيئة.",
-                        0xFF0000
-                    )
-
-            self.last_badword_time[user_id] = now
             return
 
         await self.process_commands(message)
 
-# =========================
-# إنشاء البوت
-# =========================
+# =========================================================
+# BOT INSTANCE
+# =========================================================
 
 bot = MyBot()
 
-# =========================
-# أوامر البوت
-# =========================
+# =========================================================
+# COMMANDS
+# =========================================================
+
+# =========================================================
+# MUTE PERMISSION SYSTEM
+# =========================================================
+
+ALLOWED_MUTE_USERS = set()
+
+# =========================================================
+# TIME PARSER
+# =========================================================
+
+def parse_duration(duration: str):
+
+    duration = duration.lower()
+
+    match = re.match(
+        r"(\d+)(s|m|h|d)",
+        duration
+    )
+
+    if not match:
+        return None
+
+    value = int(match.group(1))
+    unit = match.group(2)
+
+    if unit == "s":
+        return timedelta(seconds=value)
+
+    if unit == "m":
+        return timedelta(minutes=value)
+
+    if unit == "h":
+        return timedelta(hours=value)
+
+    if unit == "d":
+        return timedelta(days=value)
+
+    return None
+
+# =========================================================
+# ADD MUTE PERMISSION
+# =========================================================
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def addmute(ctx, member: discord.Member):
+
+    if member.id in ALLOWED_MUTE_USERS:
+
+        embed = discord.Embed(
+            title="⚠️ Already Added",
+            description=f"{member.mention} already has mute permissions.",
+            color=0xFFFF00
+        )
+
+        return await ctx.send(embed=embed)
+
+    ALLOWED_MUTE_USERS.add(member.id)
+
+    embed = discord.Embed(
+        title="✅ Permission Added",
+        description=f"{member.mention} can now use mute commands.",
+        color=0x00FF00
+    )
+
+    await ctx.send(embed=embed)
+
+# =========================================================
+# REMOVE MUTE PERMISSION
+# =========================================================
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def removemute(ctx, member: discord.Member):
+
+    if member.id not in ALLOWED_MUTE_USERS:
+
+        embed = discord.Embed(
+            title="❌ Not Found",
+            description=f"{member.mention} does not have mute permissions.",
+            color=0xFF0000
+        )
+
+        return await ctx.send(embed=embed)
+
+    ALLOWED_MUTE_USERS.remove(member.id)
+
+    embed = discord.Embed(
+        title="✅ Permission Removed",
+        description=f"{member.mention} can no longer use mute commands.",
+        color=0x00FF00
+    )
+
+    await ctx.send(embed=embed)
+
+# =========================================================
+# MUTE COMMAND
+# =========================================================
+
+@bot.command(name="mute")
+async def mute_command(
+
+    ctx,
+    member: discord.Member,
+    duration: str,
+    *,
+    reason="No reason provided"
+
+):
+
+    # =====================================================
+    # CHECK PERMISSION
+    # =====================================================
+
+    if (
+
+        ctx.author.id not in ALLOWED_MUTE_USERS and
+        not ctx.author.guild_permissions.administrator
+
+    ):
+
+        embed = discord.Embed(
+            title="❌ Permission Denied",
+            description="You do not have permission to use this command.",
+            color=0xFF0000
+        )
+
+        return await ctx.send(embed=embed)
+
+    # =====================================================
+    # CHECK TARGET
+    # =====================================================
+
+    if member.id == ctx.author.id:
+
+        embed = discord.Embed(
+            title="❌ Invalid Action",
+            description="You cannot mute yourself.",
+            color=0xFF0000
+        )
+
+        return await ctx.send(embed=embed)
+
+    if member.guild.owner_id == member.id:
+
+        embed = discord.Embed(
+            title="❌ Invalid Target",
+            description="You cannot mute the server owner.",
+            color=0xFF0000
+        )
+
+        return await ctx.send(embed=embed)
+
+    if member.top_role >= ctx.guild.me.top_role:
+
+        embed = discord.Embed(
+            title="❌ Role Error",
+            description="My role is lower than the target user.",
+            color=0xFF0000
+        )
+
+        return await ctx.send(embed=embed)
+
+    # =====================================================
+    # PARSE TIME
+    # =====================================================
+
+    delta = parse_duration(duration)
+
+    if not delta:
+
+        embed = discord.Embed(
+            title="❌ Invalid Duration",
+            description="Use: `10m`, `1h`, `2d`, `30s`",
+            color=0xFF0000
+        )
+
+        return await ctx.send(embed=embed)
+
+    # =====================================================
+    # APPLY TIMEOUT
+    # =====================================================
+
+    try:
+
+        until = utcnow() + delta
+
+        await member.timeout(
+            until,
+            reason=reason
+        )
+
+        embed = discord.Embed(
+            title="🔇 User Muted",
+            color=0x3498db,
+            timestamp=utcnow()
+        )
+
+        embed.add_field(
+            name="User",
+            value=f"{member.mention}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="Moderator",
+            value=f"{ctx.author.mention}",
+            inline=True
+        )
+
+        embed.add_field(
+            name="Duration",
+            value=f"`{duration}`",
+            inline=True
+        )
+
+        embed.add_field(
+            name="Reason",
+            value=reason,
+            inline=False
+        )
+
+        embed.set_footer(
+            text=f"User ID: {member.id}"
+        )
+
+        await ctx.send(embed=embed)
+
+    except Exception as e:
+
+        embed = discord.Embed(
+            title="❌ Error",
+            description=f"Failed to mute user.\n```{e}```",
+            color=0xFF0000
+        )
+
+        await ctx.send(embed=embed)
+
+# =========================================================
+# UNMUTE COMMAND
+# =========================================================
+
+@bot.command(name="unmute")
+async def unmute_command(
+
+    ctx,
+    member: discord.Member
+
+):
+
+    if (
+
+        ctx.author.id not in ALLOWED_MUTE_USERS and
+        not ctx.author.guild_permissions.administrator
+
+    ):
+
+        embed = discord.Embed(
+            title="❌ Permission Denied",
+            description="You do not have permission to use this command.",
+            color=0xFF0000
+        )
+
+        return await ctx.send(embed=embed)
+
+    try:
+
+        await member.timeout(
+            None,
+            reason=f"Unmuted by {ctx.author}"
+        )
+
+        embed = discord.Embed(
+            title="🔊 User Unmuted",
+            description=f"{member.mention} has been unmuted.",
+            color=0x00FF00,
+            timestamp=utcnow()
+        )
+
+        embed.add_field(
+            name="Moderator",
+            value=ctx.author.mention,
+            inline=True
+        )
+
+        await ctx.send(embed=embed)
+
+    except Exception as e:
+
+        embed = discord.Embed(
+            title="❌ Error",
+            description=f"Failed to unmute user.\n```{e}```",
+            color=0xFF0000
+        )
+
+        await ctx.send(embed=embed)
 
 @bot.command()
 async def ping(ctx):
@@ -753,7 +991,10 @@ async def say(ctx, *, text):
     except:
         pass
 
-    await ctx.send(text)
+    await ctx.send(
+        text,
+        allowed_mentions=discord.AllowedMentions.none()
+    )
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -767,9 +1008,9 @@ async def servers(ctx):
 
     await ctx.send(embed=embed)
 
-# =========================
-# أخطاء الأوامر
-# =========================
+# =========================================================
+# ERRORS
+# =========================================================
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -791,9 +1032,9 @@ async def on_command_error(ctx, error):
 
     print("Command Error:", error)
 
-# =========================
-# التشغيل
-# =========================
+# =========================================================
+# MAIN
+# =========================================================
 
 async def main():
 
