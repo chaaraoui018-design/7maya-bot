@@ -803,7 +803,9 @@ async def mute_command(
             delete_after=6
         )
 
-    if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
+    if (
+    member.top_role >= ctx.guild.self_member.top_role
+):
 
         embed = discord.Embed(
             title="❌ Role Error",
@@ -935,13 +937,10 @@ async def unmute_command(
 
 ):
 
-    if (
-
-        ctx.author.id not in ALLOWED_MUTE_USERS
-        and ctx.author.id != ctx.guild.owner_id
-        and not ctx.author.guild_permissions.administrator
-
-    ):
+   if (
+    ctx.author.id != ctx.guild.owner_id
+    and ctx.author.id not in ALLOWED_MUTE_USERS
+):
 
         embed = discord.Embed(
             title="❌ Permission Denied",
