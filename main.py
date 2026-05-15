@@ -623,9 +623,9 @@ class MyBot(commands.Bot):
 
                     message.channel,
 
-                    "⚠️ تحذير",
+                    "⚠️ تحذير من الروابط",
 
-                    f"{message.author.mention} يمنع نشر الروابط. المرة القادمة سيتم اسكاتك.",
+                    f"{message.author.mention} نشر الروابط ممنوع. المرة القادمة سيتم اسكاتك.",
 
                     0xFFFF00
                 )
