@@ -17,16 +17,12 @@ from discord.utils import utcnow
 
 TOKEN = os.environ.get("DISCORD")
 
-# روم يسمح بالروابط مؤقتاً
 ALLOWED_CHANNEL_ID = 1403040565137899733
 
-# رابط الاستضافة
 SELF_PING_URL = "https://sevenmaya-bot.onrender.com"
 
-# مدة التايم أوت التلقائي للروابط
 TIMEOUT_DURATION = timedelta(hours=1)
 
-# مدة التحذير
 WARNING_COOLDOWN = timedelta(hours=1)
 
 if not TOKEN:
@@ -365,22 +361,6 @@ class MyBot(commands.Bot):
             if embed.description:
                 full_content += f" {embed.description}"
 
-        if hasattr(message, "components"):
-
-            try:
-
-                for row in message.components:
-
-                    for item in row.children:
-
-                        if hasattr(item, "url"):
-
-                            if item.url:
-                                full_content += f" {item.url}"
-
-            except:
-                pass
-
         raw = full_content.lower()
 
         normalized = self.normalize_text(
@@ -626,7 +606,7 @@ def parse_duration(duration: str):
     duration = duration.lower()
 
     match = re.match(
-        r"(\d+)(s|m|h|d)",
+        r"(\d+)(s|m|h|d)$",
         duration
     )
 
@@ -671,15 +651,15 @@ async def addmute(ctx, member: discord.Member):
             color=0xFFFF00
         )
 
-        return try:
-    await ctx.message.delete()
-except:
-    pass
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     ALLOWED_MUTE_USERS.add(member.id)
 
@@ -690,14 +670,14 @@ await ctx.send(
     )
 
     try:
-    await ctx.message.delete()
-except:
-    pass
+        await ctx.message.delete()
+    except:
+        pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+    await ctx.send(
+        embed=embed,
+        delete_after=6
+    )
 
 # =========================================================
 # REMOVE MUTE PERMISSION
@@ -720,15 +700,15 @@ async def removemute(ctx, member: discord.Member):
             color=0xFF0000
         )
 
-        return try:
-    await ctx.message.delete()
-except:
-    pass
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     ALLOWED_MUTE_USERS.remove(member.id)
 
@@ -739,14 +719,14 @@ await ctx.send(
     )
 
     try:
-    await ctx.message.delete()
-except:
-    pass
+        await ctx.message.delete()
+    except:
+        pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+    await ctx.send(
+        embed=embed,
+        delete_after=6
+    )
 
 # =========================================================
 # MUTE COMMAND
@@ -763,10 +743,6 @@ async def mute_command(
 
 ):
 
-    # =====================================================
-    # CHECK PERMISSION
-    # =====================================================
-
     if (
 
         ctx.author.id not in ALLOWED_MUTE_USERS
@@ -781,19 +757,15 @@ async def mute_command(
             color=0xFF0000
         )
 
-        return try:
-    await ctx.message.delete()
-except:
-    pass
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
-
-    # =====================================================
-    # CHECK SELF
-    # =====================================================
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     if member.id == ctx.author.id:
 
@@ -803,19 +775,15 @@ await ctx.send(
             color=0xFF0000
         )
 
-        return try:
-    await ctx.message.delete()
-except:
-    pass
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
-
-    # =====================================================
-    # OWNER CAN MUTE ANYONE
-    # =====================================================
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     if ctx.author.id != ctx.guild.owner_id:
 
@@ -827,15 +795,15 @@ await ctx.send(
                 color=0xFF0000
             )
 
-            return try:
-    await ctx.message.delete()
-except:
-    pass
+            try:
+                await ctx.message.delete()
+            except:
+                pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+            return await ctx.send(
+                embed=embed,
+                delete_after=6
+            )
 
         if member.top_role >= ctx.author.top_role:
 
@@ -845,19 +813,15 @@ await ctx.send(
                 color=0xFF0000
             )
 
-            return try:
-    await ctx.message.delete()
-except:
-    pass
+            try:
+                await ctx.message.delete()
+            except:
+                pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
-
-    # =====================================================
-    # BOT ROLE CHECK
-    # =====================================================
+            return await ctx.send(
+                embed=embed,
+                delete_after=6
+            )
 
     if member.top_role >= ctx.guild.me.top_role:
 
@@ -867,19 +831,15 @@ await ctx.send(
             color=0xFF0000
         )
 
-        return try:
-    await ctx.message.delete()
-except:
-    pass
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
-
-    # =====================================================
-    # PARSE TIME
-    # =====================================================
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     delta = parse_duration(duration)
 
@@ -891,19 +851,15 @@ await ctx.send(
             color=0xFF0000
         )
 
-        return try:
-    await ctx.message.delete()
-except:
-    pass
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
-
-    # =====================================================
-    # APPLY MUTE
-    # =====================================================
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     try:
 
@@ -944,7 +900,10 @@ await ctx.send(
             inline=False
         )
 
-       
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
         await ctx.send(embed=embed)
 
@@ -957,14 +916,14 @@ await ctx.send(
         )
 
         try:
-    await ctx.message.delete()
-except:
-    pass
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+        await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
 # =========================================================
 # UNMUTE COMMAND
@@ -992,15 +951,15 @@ async def unmute_command(
             color=0xFF0000
         )
 
-        return try:
-    await ctx.message.delete()
-except:
-    pass
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     try:
 
@@ -1022,6 +981,11 @@ await ctx.send(
             inline=True
         )
 
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+
         await ctx.send(embed=embed)
 
     except Exception as e:
@@ -1033,14 +997,14 @@ await ctx.send(
         )
 
         try:
-    await ctx.message.delete()
-except:
-    pass
+            await ctx.message.delete()
+        except:
+            pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+        await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
 # =========================================================
 # BASIC COMMANDS
@@ -1057,15 +1021,15 @@ async def ping(ctx):
         color=0x00FF00
     )
 
-   try:
-    await ctx.message.delete()
-except:
-    pass
+    try:
+        await ctx.message.delete()
+    except:
+        pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+    await ctx.send(
+        embed=embed,
+        delete_after=6
+    )
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -1092,14 +1056,14 @@ async def servers(ctx):
     )
 
     try:
-    await ctx.message.delete()
-except:
-    pass
+        await ctx.message.delete()
+    except:
+        pass
 
-await ctx.send(
-    embed=embed,
-    delete_after=6
-)
+    await ctx.send(
+        embed=embed,
+        delete_after=6
+    )
 
 # =========================================================
 # ERRORS
