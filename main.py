@@ -814,7 +814,7 @@ async def mute_command(
 
     # Moderator role check
     if (
-        member.top_role >= ctx.author.top_role
+       member.top_role > ctx.author.top_role
         and ctx.author.id != ctx.guild.owner_id
     ):
 
