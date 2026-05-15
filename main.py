@@ -576,7 +576,7 @@ class MyBot(commands.Bot):
 
                         f"{message.author.mention} تم اسكاتك بسبب تكرار نشر الروابط.",
 
-                        0xFFFF00
+                        0xFF0000
                     )
 
             self.last_link_time[user_id] = now
