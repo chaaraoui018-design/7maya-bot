@@ -785,43 +785,41 @@ async def mute_command(
             delete_after=6
         )
 
-    if ctx.author.id != ctx.guild.owner_id:
+    if member.guild.owner_id == member.id and ctx.author.id != ctx.guild.owner_id:
 
-        if member.guild.owner_id == member.id:
+        embed = discord.Embed(
+            title="❌ Invalid Target",
+            description="You cannot mute the server owner.",
+            color=0xFF0000
+        )
 
-            embed = discord.Embed(
-                title="❌ Invalid Target",
-                description="You cannot mute the server owner.",
-                color=0xFF0000
-            )
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-            try:
-                await ctx.message.delete()
-            except:
-                pass
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
-            return await ctx.send(
-                embed=embed,
-                delete_after=6
-            )
+    if member.top_role >= ctx.author.top_role and ctx.author.id != ctx.guild.owner_id:
 
-       if member.top_role > ctx.author.top_role:
+        embed = discord.Embed(
+            title="❌ Role Error",
+            description="You cannot mute someone with higher or equal role.",
+            color=0xFF0000
+        )
 
-    embed = discord.Embed(
-        title="❌ Role Error",
-        description="You cannot mute someone with higher role.",
-        color=0xFF0000
-    )
+        try:
+            await ctx.message.delete()
+        except:
+            pass
 
-    try:
-        await ctx.message.delete()
-    except:
-        pass
-
-    return await ctx.send(
-        embed=embed,
-        delete_after=6
-    )
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
 
     if member.top_role >= ctx.guild.me.top_role:
 
