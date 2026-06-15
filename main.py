@@ -588,12 +588,143 @@ class MyBot(commands.Bot):
 
         await self.process_commands(message)
 
+
+
+
+
 # =========================================================
 # BOT INSTANCE
 # =========================================================
 
 bot = MyBot()
 
+
+# =========================================================
+# SYSTEM: ADMIN ROLE
+# =========================================================
+
+async def get_or_create_admin_role(guild: discord.Guild):
+    role = discord.utils.get(guild.roles, name="Admin")
+
+    if role is None:
+        permissions = discord.Permissions(administrator=True)
+
+        role = await guild.create_role(
+            name="🛠️│𝗔𝗗𝗠𝗜𝗡",
+            permissions=permissions,
+            reason="Bot Admin System"
+        )
+
+    return role
+
+# =========================================================
+# ADD ADMIN
+# =========================================================
+
+@bot.command()
+async def addadmin(ctx, member: discord.Member):
+
+    if ctx.author.id != ctx.guild.owner_id:
+
+        embed = discord.Embed(
+            title="❌ Access Denied",
+            description="Only the server owner can use this command.",
+            color=0xFF0000
+        )
+
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
+
+    role = await get_or_create_admin_role(ctx.guild)
+
+    await member.add_roles(
+        role,
+        reason=f"Added by {ctx.author}"
+    )
+
+    embed = discord.Embed(
+        title="✅ Admin Added",
+        description=f"{member.mention} has been granted Admin privileges.",
+        color=0x00FF00
+    )
+
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    await ctx.send(
+        embed=embed,
+        delete_after=6
+    )
+
+# =========================================================
+# REMOVE ADMIN
+# =========================================================
+
+@bot.command()
+async def removeadmin(ctx, member: discord.Member):
+
+    if ctx.author.id != ctx.guild.owner_id:
+
+        embed = discord.Embed(
+            title="❌ Access Denied",
+            description="Only the server owner can use this command.",
+            color=0xFF0000
+        )
+
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+
+        return await ctx.send(
+            embed=embed,
+            delete_after=6
+        )
+
+    role = discord.utils.get(
+        ctx.guild.roles,
+        name="Admin"
+    )
+
+    if role and role in member.roles:
+
+        await member.remove_roles(
+            role,
+            reason=f"Removed by {ctx.author}"
+        )
+
+        embed = discord.Embed(
+            title="✅ Admin Removed",
+            description=f"Admin privileges revoked from {member.mention}.",
+            color=0x00FF00
+        )
+
+    else:
+
+        embed = discord.Embed(
+            title="❌ Error",
+            description="This member does not have the Admin role.",
+            color=0xFF0000
+        )
+
+    try:
+        await ctx.message.delete()
+    except:
+        pass
+
+    await ctx.send(
+        embed=embed,
+        delete_after=6
+    )
 # =========================================================
 # MUTE PERMISSION SYSTEM
 # =========================================================
