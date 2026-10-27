@@ -1354,14 +1354,33 @@ async def ping(ctx):
 @commands.has_permissions(administrator=True)
 async def say(ctx, *, text):
 
+    # حد إيمبد ديسكورد 4096 حرف
+    if len(text) > 4000:
+        text = text[:4000] + "..."
+
+    embed = discord.Embed(
+        description=text,
+        color=0x3498DB,
+        timestamp=utcnow()
+    )
+
+    embed.set_author(
+        name=ctx.author.display_name,
+        icon_url=ctx.author.display_avatar.url
+    )
+
+    embed.set_footer(text=ctx.guild.name)
+
     try:
         await ctx.message.delete()
     except:
         pass
 
+    # @everyone في content (مو داخل الإيمبد) عشان يشتغل المنشن فعليًا
     await ctx.send(
-        text,
-        allowed_mentions=discord.AllowedMentions.none()
+        content="@everyone",
+        embed=embed,
+        allowed_mentions=discord.AllowedMentions(everyone=True)
     )
 
 @bot.command()
@@ -1401,7 +1420,7 @@ COMMAND_HELP = {
     "addmute": "Let a member use mute commands — Server owner only",
     "removemute": "Revoke mute permissions — Server owner only",
     "ping": "Bot latency",
-    "say": "Send a message as the bot: `!say <text>` — Administrator",
+    "say": "Send an embed + @everyone: `!say <text>` — Administrator",
     "servers": "Number of servers the bot is in — Administrator"
 }
 
