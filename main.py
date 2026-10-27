@@ -1517,19 +1517,19 @@ async def servers(ctx):
 
 COMMAND_HELP = {
 
-    "help": "عرض كل الأوامر المتاحة",
-    "warn": "تحذير عضو: !warn @user السبب",
-    "warns": "عرض تحذيرات عضو: !warns @user",
-    "clear": "حذف رسائل: !clear 50",
-    "allowchannel": "السماح بالروابط في قناة: !allowchannel #links",
-    "setchannellogs": "تحديد قناة اللوقز: !setchannellogs #logs",
-    "mute": "اسكات عضو: !mute @user 1h السبب",
-    "unmute": "فك الاسكات: !unmute @user",
-    "addmute": "السماح لعضو باستخدام أوامر الاسكات",
-    "removemute": "سحب صلاحية الاسكات من عضو",
-    "ping": "سرعة البوت",
-    "say": "إرسال رسالة باسم البوت (أدمن)",
-    "servers": "عدد السيرفرات (أدمن)"
+    "help": "Show every available command",
+    "warn": "Warn a member: `!warn @user [reason]` — Manage Messages",
+    "warns": "Show a member's warnings: `!warns @user`",
+    "clear": "Delete messages: `!clear 50` — Manage Messages",
+    "allowchannel": "Allow links in a channel: `!allowchannel #links` — Manage Server",
+    "setchannellogs": "Set the logs channel: `!setchannellogs #logs` — Administrator",
+    "mute": "Timeout a member: `!mute @user 1h [reason]` — Admin / Mute perms",
+    "unmute": "Remove a timeout: `!unmute @user` — Admin / Mute perms",
+    "addmute": "Let a member use mute commands — Server owner only",
+    "removemute": "Revoke mute permissions — Server owner only",
+    "ping": "Bot latency",
+    "say": "Send a message as the bot: `!say <text>` — Administrator",
+    "servers": "Number of servers the bot is in — Administrator"
 }
 
 # =========================================================
@@ -1540,8 +1540,8 @@ COMMAND_HELP = {
 async def help_command(ctx):
 
     embed = discord.Embed(
-        title="📖 قائمة الأوامر",
-        description=f"البريفكس: `{ctx.prefix}`",
+        title="📖 Commands",
+        description=f"Prefix: `{ctx.prefix}`",
         color=0x3498DB,
         timestamp=utcnow()
     )
@@ -1565,7 +1565,7 @@ async def help_command(ctx):
             inline=False
         )
 
-    embed.set_footer(text=f"🛡️ {len(bot.commands)} أمر")
+    embed.set_footer(text=f"🛡️ {len(bot.commands)} commands")
 
     await ctx.send(embed=embed)
 
