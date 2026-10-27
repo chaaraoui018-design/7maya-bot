@@ -77,7 +77,6 @@ class Store:
 
         self.data = {
             "last_link": {},      # user_id -> وقت آخر رابط
-            "last_everyone": {},  # user_id -> وقت آخر منشن عام
             "warns": {},          # user_id -> {count, history}
             "guilds": {}          # guild_id -> {log_channel, allowed_channels}
         }
@@ -269,8 +268,6 @@ class MyBot(commands.Bot):
 
         # محفوظة في warnings.json → تبقى بعد أي restart
         self.last_link_time = self.store.load_times("last_link")
-
-        self.last_everyone_time = self.store.load_times("last_everyone")
 
         self.REPLACEMENTS = {
 
@@ -475,14 +472,7 @@ class MyBot(commands.Bot):
                 if (now - v) < timedelta(days=1)
             }
 
-            self.last_everyone_time = {
-                k: v
-                for k, v in self.last_everyone_time.items()
-                if (now - v) < timedelta(days=1)
-            }
-
             self.store.save_times("last_link", self.last_link_time)
-            self.store.save_times("last_everyone", self.last_everyone_time)
 
             print("Cache cleaned")
 
@@ -710,20 +700,6 @@ class MyBot(commands.Bot):
         )
 
     # =========================================================
-    # @everyone DETECTION
-    # =========================================================
-
-    def mentions_everyone(self, message: discord.Message) -> bool:
-
-        content = (message.content or "").lower()
-
-        return (
-            message.mention_everyone
-            or "@everyone" in content
-            or "@here" in content
-        )
-
-    # =========================================================
     # LOG CHANNEL
     # =========================================================
 
@@ -776,101 +752,6 @@ class MyBot(commands.Bot):
             print("Log Error:", e)
 
     # =========================================================
-    # @everyone MONITOR  (تحذير → اسكات ساعة)
-    # =========================================================
-
-    async def handle_everyone(self, message: discord.Message):
-
-        now = datetime.now(UTC)
-
-        user_id = message.author.id
-
-        try:
-            await message.delete()
-        except:
-            pass
-
-        last_time = self.last_everyone_time.get(user_id)
-
-        first_time = (
-            not last_time or
-            (now - last_time) > WARNING_COOLDOWN
-        )
-
-        self.last_everyone_time[user_id] = now
-        self.store.save_time("last_everyone", user_id, now)
-
-        # ---- أول مرة: تحذير ----
-        if first_time:
-
-            await self.send_warning(
-
-                message.channel,
-
-                "📢 المنشن العام ممنوع",
-
-                f"{message.author.mention} استخدام `@everyone` / `@here` ممنوع. المرة القادمة سيتم اسكاتك.",
-
-                0xFFFF00
-            )
-
-            await self.send_log(
-
-                message.guild,
-
-                "⚠️ تحذير — منشن عام",
-
-                f"{message.author.mention} استخدم منشن عام في {message.channel.mention}",
-
-                0xFFFF00,
-
-                [
-                    ("العضو", f"{message.author} (`{user_id}`)"),
-                    ("القناة", message.channel.mention),
-                    ("العقوبة", "تحذير أول")
-                ]
-            )
-
-            return
-
-        # ---- تكرار: اسكات ساعة ----
-        success = await self.apply_timeout(
-            message.author,
-            "تكرار استخدام @everyone / @here"
-        )
-
-        if success:
-
-            await self.send_warning(
-
-                message.channel,
-
-                "⛔ تم اسكاتك",
-
-                f"{message.author.mention} تم اسكاتك ساعة بسبب تكرار المنشن العام.",
-
-                0xFF0000
-            )
-
-            await self.send_log(
-
-                message.guild,
-
-                "⛔ تايم أوت — تكرار منشن عام",
-
-                f"{message.author.mention} تم اسكاته في {message.channel.mention}",
-
-                0xFF0000,
-
-                [
-                    ("العضو", f"{message.author} (`{user_id}`)"),
-                    ("القناة", message.channel.mention),
-                    ("العقوبة", "اسكات 1 ساعة")
-                ]
-            )
-
-
-    # =========================================================
     # MESSAGE EVENT
     # =========================================================
 
@@ -897,14 +778,6 @@ class MyBot(commands.Bot):
 
             await self.process_commands(message)
             return
-
-        # =====================================================
-        # @everyone / @here PROTECTION
-        # =====================================================
-
-        if self.mentions_everyone(message):
-
-            await self.handle_everyone(message)
 
         # =====================================================
         # LINK PROTECTION
@@ -957,16 +830,16 @@ class MyBot(commands.Bot):
 
                     message.guild,
 
-                    "⚠️ تحذير — نشر رابط",
+                    "⚠️ Warning — Link Posted",
 
-                    f"{message.author.mention} نشر رابط في {message.channel.mention}",
+                    f"{message.author.mention} posted a link in {message.channel.mention}",
 
                     0xFFFF00,
 
                     [
-                        ("العضو", f"{message.author} (`{user_id}`)"),
-                        ("القناة", message.channel.mention),
-                        ("العقوبة", "تحذير أول")
+                        ("Member", f"{message.author} (`{user_id}`)"),
+                        ("Channel", message.channel.mention),
+                        ("Action", "First warning")
                     ]
                 )
 
@@ -997,16 +870,16 @@ class MyBot(commands.Bot):
 
                         message.guild,
 
-                        "⛔ تايم أوت — تكرار الروابط",
+                        "⛔ Timeout — Repeated Links",
 
-                        f"{message.author.mention} تم اسكاته في {message.channel.mention}",
+                        f"{message.author.mention} was timed out in {message.channel.mention}",
 
                         0xFF0000,
 
                         [
-                            ("العضو", f"{message.author} (`{user_id}`)"),
-                            ("القناة", message.channel.mention),
-                            ("العقوبة", "اسكات 1 ساعة")
+                            ("Member", f"{message.author} (`{user_id}`)"),
+                            ("Channel", message.channel.mention),
+                            ("Action", "1 hour timeout")
                         ]
                     )
 
@@ -1077,7 +950,7 @@ async def addmute(ctx, member: discord.Member):
     if ctx.author.id != ctx.guild.owner_id:
 
         return await ctx.send(
-            "❌ فقط مالك السيرفر يستطيع استخدام هذا الامر."
+            "❌ Only the server owner can use this command."
         )
 
     if member.id in ALLOWED_MUTE_USERS:
@@ -1126,7 +999,7 @@ async def removemute(ctx, member: discord.Member):
     if ctx.author.id != ctx.guild.owner_id:
 
         return await ctx.send(
-            "❌ فقط مالك السيرفر يستطيع استخدام هذا الامر."
+            "❌ Only the server owner can use this command."
         )
 
     if member.id not in ALLOWED_MUTE_USERS:
@@ -1579,7 +1452,7 @@ async def warn_command(
     ctx,
     member: discord.Member,
     *,
-    reason="بدون سبب"
+    reason="No reason provided"
 ):
 
     count = bot.store.add_warn(
@@ -1590,35 +1463,35 @@ async def warn_command(
     )
 
     embed = discord.Embed(
-        title="⚠️ تحذير",
-        description=f"{member.mention} تم تحذيره بواسطة {ctx.author.mention}",
+        title="⚠️ Warning",
+        description=f"{member.mention} was warned by {ctx.author.mention}",
         color=0xFFFF00,
         timestamp=utcnow()
     )
 
-    embed.add_field(name="السبب", value=reason, inline=False)
-    embed.add_field(name="عدد التحذيرات", value=str(count), inline=True)
+    embed.add_field(name="Reason", value=reason, inline=False)
+    embed.add_field(name="Total Warnings", value=str(count), inline=True)
 
     await ctx.send(embed=embed)
 
     await bot.send_log(
         ctx.guild,
-        "⚠️ تحذير عضو",
-        f"{member.mention} تم تحذيره بواسطة {ctx.author.mention}",
+        "⚠️ Member Warned",
+        f"{member.mention} was warned by {ctx.author.mention}",
         0xFFFF00,
         [
-            ("العضو", f"{member} (`{member.id}`)"),
-            ("بواسطة", f"{ctx.author} (`{ctx.author.id}`)"),
-            ("السبب", reason),
-            ("العدد", str(count))
+            ("Member", f"{member} (`{member.id}`)"),
+            ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+            ("Reason", reason),
+            ("Total", str(count))
         ]
     )
 
     try:
         await member.send(
-            f"⚠️ تم تحذيرك في **{ctx.guild.name}**\n"
-            f"السبب: {reason}\n"
-            f"عدد تحذيراتك: {count}"
+            f"⚠️ You were warned in **{ctx.guild.name}**\n"
+            f"Reason: {reason}\n"
+            f"Your total warnings: {count}"
         )
     except:
         pass
@@ -1633,8 +1506,8 @@ async def warns_command(ctx, member: discord.Member):
     count = bot.store.warn_count(member.id)
 
     embed = discord.Embed(
-        title="📋 سجل التحذيرات",
-        description=f"{member.mention} لديه **{count}** تحذير",
+        title="📋 Warning History",
+        description=f"{member.mention} has **{count}** warning(s)",
         color=0x3498DB,
         timestamp=utcnow()
     )
@@ -1661,8 +1534,8 @@ async def clear_command(ctx, amount: int = 10):
 
         return await ctx.send(
             embed=discord.Embed(
-                title="⛔ فشل الحذف",
-                description="تأكد أن البوت يملك صلاحية **Manage Messages**.",
+                title="⛔ Purge Failed",
+                description="Make sure the bot has the **Manage Messages** permission.",
                 color=0xFF0000
             ),
             delete_after=6
@@ -1671,8 +1544,8 @@ async def clear_command(ctx, amount: int = 10):
     real = max(0, len(deleted) - 1)
 
     embed = discord.Embed(
-        title="🧹 تم التنظيف",
-        description=f"تم حذف **{real}** رسالة بواسطة {ctx.author.mention}",
+        title="🧹 Messages Cleared",
+        description=f"Deleted **{real}** messages by {ctx.author.mention}",
         color=0x2ECC71,
         timestamp=utcnow()
     )
@@ -1681,13 +1554,13 @@ async def clear_command(ctx, amount: int = 10):
 
     await bot.send_log(
         ctx.guild,
-        "🧹 تنظيف رسائل",
-        f"{ctx.author.mention} حذف **{real}** رسالة في {ctx.channel.mention}",
+        "🧹 Messages Cleared",
+        f"{ctx.author.mention} deleted **{real}** messages in {ctx.channel.mention}",
         0x2ECC71,
         [
-            ("بواسطة", f"{ctx.author} (`{ctx.author.id}`)"),
-            ("القناة", ctx.channel.mention),
-            ("العدد", str(real))
+            ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+            ("Channel", ctx.channel.mention),
+            ("Total", str(real))
         ]
     )
 
@@ -1704,7 +1577,7 @@ async def clear_command(ctx, amount: int = 10):
 
 @bot.hybrid_command(
     name="allowchannel",
-    description="السماح بالروابط في قناة (تُحذف بعد 5 ثواني بدون عقوبة)"
+    description="Allow links in a channel (deleted after 5 seconds, no punishment)"
 )
 @commands.has_permissions(manage_guild=True)
 async def allowchannel_command(
@@ -1717,10 +1590,10 @@ async def allowchannel_command(
     bot.store.allow_channel(ctx.guild.id, channel.id)
 
     embed = discord.Embed(
-        title="✅ قناة مسموحة",
+        title="✅ Channel Allowed",
         description=(
-            f"{channel.mention} صارت مسموحة للروابط\n"
-            f"الروابط فيها تُحذف بعد 5 ثواني بدون أي عقوبة."
+            f"{channel.mention} now allows links.\n"
+            f"Links there are deleted after 5 seconds with no punishment."
         ),
         color=0x2ECC71,
         timestamp=utcnow()
@@ -1730,12 +1603,12 @@ async def allowchannel_command(
 
     await bot.send_log(
         ctx.guild,
-        "✅ قناة مسموحة للروابط",
-        f"{ctx.author.mention} أضاف {channel.mention}",
+        "✅ Channel Allowed for Links",
+        f"{ctx.author.mention} added {channel.mention}",
         0x2ECC71,
         [
-            ("بواسطة", f"{ctx.author} (`{ctx.author.id}`)"),
-            ("القناة", channel.mention)
+            ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+            ("Channel", channel.mention)
         ]
     )
 
@@ -1755,8 +1628,8 @@ async def setchannellogs_command(
     bot.store.set_log_channel(ctx.guild.id, channel.id)
 
     embed = discord.Embed(
-        title="✅ قناة اللوقز",
-        description=f"تم تحديد {channel.mention} كقناة لوقز لهذا السيرفر.",
+        title="✅ Logs Channel",
+        description=f"{channel.mention} is now the logs channel for this server.",
         color=0x2ECC71,
         timestamp=utcnow()
     )
@@ -1766,12 +1639,12 @@ async def setchannellogs_command(
     # رسالة تجريبية في قناة اللوقز
     await bot.send_log(
         ctx.guild,
-        "🔧 تم تفعيل اللوقز",
-        f"هذه القناة صارت تستقبل كل أحداث الحماية.\nبواسطة {ctx.author.mention}",
+        "🔧 Logging Enabled",
+        f"This channel now receives all protection events.\nBy {ctx.author.mention}",
         0x3498DB,
         [
-            ("السيرفر", ctx.guild.name),
-            ("بواسطة", f"{ctx.author} (`{ctx.author.id}`)")
+            ("Server", ctx.guild.name),
+            ("By", f"{ctx.author} (`{ctx.author.id}`)")
         ]
     )
 
@@ -1795,7 +1668,7 @@ async def on_command_error(ctx, error):
 
         return await ctx.send(
             embed=discord.Embed(
-                title="❌ ليس لديك صلاحية.",
+                title="❌ Missing Permissions",
                 color=0xFF0000
             ),
             delete_after=6
@@ -1808,8 +1681,8 @@ async def on_command_error(ctx, error):
 
         return await ctx.send(
             embed=discord.Embed(
-                title="⚠️ العضو غير موجود.",
-                description="منشن العضو بشكل صحيح.",
+                title="⚠️ Member Not Found",
+                description="Mention the member correctly.",
                 color=0xFFFF00
             ),
             delete_after=6
@@ -1822,8 +1695,8 @@ async def on_command_error(ctx, error):
 
         return await ctx.send(
             embed=discord.Embed(
-                title="⚠️ ناقص",
-                description=f"استخدم: `{ctx.prefix}{ctx.command.name} {ctx.command.signature}`",
+                title="⚠️ Missing Argument",
+                description=f"Usage: `{ctx.prefix}{ctx.command.name} {ctx.command.signature}`",
                 color=0xFFFF00
             ),
             delete_after=6
@@ -1836,8 +1709,8 @@ async def on_command_error(ctx, error):
 
         return await ctx.send(
             embed=discord.Embed(
-                title="⚠️ قيمة غير صحيحة",
-                description="تأكد من المنشن أو القناة.",
+                title="⚠️ Invalid Value",
+                description="Check the mention or the channel.",
                 color=0xFFFF00
             ),
             delete_after=6
@@ -1857,32 +1730,32 @@ async def on_tree_error(
 
     if isinstance(error, commands.MissingPermissions):
 
-        message = "❌ ليس لديك صلاحية."
+        message = "❌ You don't have permission."
         color = 0xFF0000
 
     elif isinstance(error, commands.MemberNotFound):
 
-        message = "⚠️ العضو غير موجود."
+        message = "⚠️ Member not found."
         color = 0xFFFF00
 
     elif isinstance(error, commands.BadArgument):
 
-        message = "⚠️ قيمة غير صحيحة — تأكد من المنشن أو القناة."
+        message = "⚠️ Invalid value — check the mention or channel."
         color = 0xFFFF00
 
     elif isinstance(error, commands.CommandOnCooldown):
 
-        message = f"⏳ انتظر {error.retry_after:.1f} ثانية."
+        message = f"⏳ Wait {error.retry_after:.1f} seconds."
         color = 0xFFFF00
 
     else:
 
         print("Slash Error:", error)
-        message = "❌ صار خطأ غير متوقع."
+        message = "❌ Something went wrong."
         color = 0xFF0000
 
     embed = discord.Embed(
-        title="خطأ",
+        title="Error",
         description=message,
         color=color
     )
