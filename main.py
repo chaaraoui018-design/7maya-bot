@@ -752,6 +752,20 @@ class MyBot(commands.Bot):
             print("Log Error:", e)
 
     # =========================================================
+    # ACTION LOG  (✅ done / ❌ not done)
+    # =========================================================
+
+    async def log_action(self, guild, action, detail, ok=True, fields=None):
+
+        await self.send_log(
+            guild,
+            ("✅ " if ok else "❌ ") + action,
+            detail,
+            0x2ECC71 if ok else 0xFF0000,
+            fields
+        )
+
+    # =========================================================
     # MESSAGE EVENT
     # =========================================================
 
@@ -794,16 +808,48 @@ class MyBot(commands.Bot):
                 try:
                     await asyncio.sleep(5)
                     await message.delete()
-                except:
-                    pass
+
+                    await self.log_action(
+                        message.guild,
+                        "Link Removed",
+                        f"{message.author.mention} posted a link in {message.channel.mention} (allowed channel — no punishment)",
+                        True,
+                        [
+                            ("Member", f"{message.author} (`{user_id}`)"),
+                            ("Channel", message.channel.mention),
+                            ("Action", "Deleted only")
+                        ]
+                    )
+
+                except Exception as e:
+                    await self.log_action(
+                        message.guild,
+                        "Delete Failed",
+                        f"Could not delete a link from {message.author.mention} in {message.channel.mention} — `{e}`",
+                        False,
+                        [
+                            ("Member", f"{message.author} (`{user_id}`)"),
+                            ("Channel", message.channel.mention)
+                        ]
+                    )
 
                 return
 
             # Delete message
             try:
                 await message.delete()
-            except:
-                pass
+            except Exception as e:
+
+                await self.log_action(
+                    message.guild,
+                    "Delete Failed",
+                    f"Could not delete a link from {message.author.mention} in {message.channel.mention} — `{e}`",
+                    False,
+                    [
+                        ("Member", f"{message.author} (`{user_id}`)"),
+                        ("Channel", message.channel.mention)
+                    ]
+                )
 
             last_time = self.last_link_time.get(user_id)
 
@@ -883,6 +929,25 @@ class MyBot(commands.Bot):
                         ]
                     )
 
+                else:
+
+                    await self.log_action(
+
+                        message.guild,
+
+                        "Timeout Failed",
+
+                        f"Could not timeout {message.author.mention} — server owner or higher/equal role.",
+
+                        False,
+
+                        [
+                            ("Member", f"{message.author} (`{user_id}`)"),
+                            ("Channel", message.channel.mention),
+                            ("Action", "None — timeout refused by Discord")
+                        ]
+                    )
+
             self.last_link_time[user_id] = now
             self.store.save_time("last_link", user_id, now)
 
@@ -949,6 +1014,17 @@ async def addmute(ctx, member: discord.Member):
 
     if ctx.author.id != ctx.guild.owner_id:
 
+        await bot.log_action(
+            ctx.guild,
+            "Mute Permission Denied",
+            f"{ctx.author.mention} tried `!addmute` on {member.mention} — server owner only.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)")
+            ]
+        )
+
         return await ctx.send(
             "❌ Only the server owner can use this command."
         )
@@ -965,6 +1041,17 @@ async def addmute(ctx, member: discord.Member):
             await ctx.message.delete()
         except:
             pass
+
+        await bot.log_action(
+            ctx.guild,
+            "Mute Permission Not Added",
+            f"{member.mention} already had mute permissions.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)")
+            ]
+        )
 
         return await ctx.send(
             embed=embed,
@@ -984,6 +1071,17 @@ async def addmute(ctx, member: discord.Member):
     except:
         pass
 
+    await bot.log_action(
+        ctx.guild,
+        "Mute Permission Added",
+        f"{member.mention} can now use mute commands.",
+        True,
+        [
+            ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+            ("Target", f"{member} (`{member.id}`)")
+        ]
+    )
+
     await ctx.send(
         embed=embed,
         delete_after=6
@@ -997,6 +1095,17 @@ async def addmute(ctx, member: discord.Member):
 async def removemute(ctx, member: discord.Member):
 
     if ctx.author.id != ctx.guild.owner_id:
+
+        await bot.log_action(
+            ctx.guild,
+            "Mute Permission Denied",
+            f"{ctx.author.mention} tried `!removemute` on {member.mention} — server owner only.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)")
+            ]
+        )
 
         return await ctx.send(
             "❌ Only the server owner can use this command."
@@ -1015,6 +1124,17 @@ async def removemute(ctx, member: discord.Member):
         except:
             pass
 
+        await bot.log_action(
+            ctx.guild,
+            "Mute Permission Not Removed",
+            f"{member.mention} did not have mute permissions.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)")
+            ]
+        )
+
         return await ctx.send(
             embed=embed,
             delete_after=6
@@ -1032,6 +1152,17 @@ async def removemute(ctx, member: discord.Member):
         await ctx.message.delete()
     except:
         pass
+
+    await bot.log_action(
+        ctx.guild,
+        "Mute Permission Removed",
+        f"{member.mention} can no longer use mute commands.",
+        True,
+        [
+            ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+            ("Target", f"{member} (`{member.id}`)")
+        ]
+    )
 
     await ctx.send(
         embed=embed,
@@ -1068,6 +1199,18 @@ async def mute_command(
             color=0xFF0000
         )
 
+        await bot.log_action(
+            ctx.guild,
+            "Command Blocked",
+            f"{ctx.author.mention} tried `{ctx.command.qualified_name}` on {member.mention} — no permission.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)"),
+                ("Reason", "No permission")
+            ]
+        )
+
         try:
             await ctx.message.delete()
         except:
@@ -1085,6 +1228,18 @@ async def mute_command(
             title="❌ Invalid Action",
             description="You cannot mute yourself.",
             color=0xFF0000
+        )
+
+        await bot.log_action(
+            ctx.guild,
+            "Mute Not Applied",
+            f"{ctx.author.mention} → {member.mention} — self target.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)"),
+                ("Reason", "Self target")
+            ]
         )
 
         try:
@@ -1109,6 +1264,18 @@ async def mute_command(
             color=0xFF0000
         )
 
+        await bot.log_action(
+            ctx.guild,
+            "Mute Not Applied",
+            f"{ctx.author.mention} → {member.mention} — server owner.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)"),
+                ("Reason", "Server owner")
+            ]
+        )
+
         try:
             await ctx.message.delete()
         except:
@@ -1131,6 +1298,18 @@ async def mute_command(
             color=0xFF0000
         )
 
+        await bot.log_action(
+            ctx.guild,
+            "Mute Not Applied",
+            f"{ctx.author.mention} → {member.mention} — higher or equal role.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)"),
+                ("Reason", "Higher or equal role")
+            ]
+        )
+
         try:
             await ctx.message.delete()
         except:
@@ -1148,6 +1327,18 @@ async def mute_command(
             title="❌ Bot Role Error",
             description="My role is lower than the target user.",
             color=0xFF0000
+        )
+
+        await bot.log_action(
+            ctx.guild,
+            "Mute Not Applied",
+            f"{ctx.author.mention} → {member.mention} — bot role too low.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)"),
+                ("Reason", "Bot role too low")
+            ]
         )
 
         try:
@@ -1169,6 +1360,18 @@ async def mute_command(
             title="❌ Invalid Duration",
             description="Use: `10m`, `1h`, `2d`, `30s`",
             color=0xFF0000
+        )
+
+        await bot.log_action(
+            ctx.guild,
+            "Mute Not Applied",
+            f"{ctx.author.mention} → {member.mention} — invalid duration.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)"),
+                ("Reason", "Invalid duration")
+            ]
         )
 
         try:
@@ -1226,6 +1429,19 @@ async def mute_command(
         except:
             pass
 
+        await bot.log_action(
+            ctx.guild,
+            "Member Muted",
+            f"{member.mention} was muted for `{duration}` by {ctx.author.mention}",
+            True,
+            [
+                ("Member", f"{member} (`{member.id}`)"),
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Duration", f"`{duration}`"),
+                ("Reason", reason)
+            ]
+        )
+
         await ctx.send(embed=embed)
 
     except Exception as e:
@@ -1234,6 +1450,18 @@ async def mute_command(
             title="❌ Error",
             description=f"Failed to mute user.\n```{e}```",
             color=0xFF0000
+        )
+
+        await bot.log_action(
+            ctx.guild,
+            "Mute Failed",
+            f"Could not mute {member.mention} — `{e}`",
+            False,
+            [
+                ("Target", f"{member} (`{member.id}`)"),
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Duration", f"`{duration}`")
+            ]
         )
 
         try:
@@ -1268,6 +1496,18 @@ async def unmute_command(
             title="❌ Permission Denied",
             description="You do not have permission to use this command.",
             color=0xFF0000
+        )
+
+        await bot.log_action(
+            ctx.guild,
+            "Command Blocked",
+            f"{ctx.author.mention} tried `{ctx.command.qualified_name}` on {member.mention} — no permission.",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Target", f"{member} (`{member.id}`)"),
+                ("Reason", "No permission")
+            ]
         )
 
         try:
@@ -1305,6 +1545,17 @@ async def unmute_command(
         except:
             pass
 
+        await bot.log_action(
+            ctx.guild,
+            "Member Unmuted",
+            f"{member.mention} was unmuted by {ctx.author.mention}",
+            True,
+            [
+                ("Member", f"{member} (`{member.id}`)"),
+                ("By", f"{ctx.author} (`{ctx.author.id}`)")
+            ]
+        )
+
         await ctx.send(embed=embed)
 
     except Exception as e:
@@ -1313,6 +1564,17 @@ async def unmute_command(
             title="❌ Error",
             description=f"Failed to unmute user.\n```{e}```",
             color=0xFF0000
+        )
+
+        await bot.log_action(
+            ctx.guild,
+            "Unmute Failed",
+            f"Could not unmute {member.mention} — `{e}`",
+            False,
+            [
+                ("Target", f"{member} (`{member.id}`)"),
+                ("By", f"{ctx.author} (`{ctx.author.id}`)")
+            ]
         )
 
         try:
@@ -1381,6 +1643,18 @@ async def say(ctx, *, text):
         content="@everyone",
         embed=embed,
         allowed_mentions=discord.AllowedMentions(everyone=True)
+    )
+
+    await bot.log_action(
+        ctx.guild,
+        "Announcement Sent",
+        f"{ctx.author.mention} sent an announcement with @everyone in {ctx.channel.mention}",
+        True,
+        [
+            ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+            ("Channel", ctx.channel.mention),
+            ("Text", text[:300] + ("..." if len(text) > 300 else ""))
+        ]
     )
 
 @bot.command()
@@ -1551,6 +1825,17 @@ async def clear_command(ctx, amount: int = 10):
 
         print("Purge Error:", e)
 
+        await bot.log_action(
+            ctx.guild,
+            "Purge Failed",
+            f"{ctx.author.mention} tried `!clear {amount}` in {ctx.channel.mention} — `{e}`",
+            False,
+            [
+                ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+                ("Channel", ctx.channel.mention)
+            ]
+        )
+
         return await ctx.send(
             embed=discord.Embed(
                 title="⛔ Purge Failed",
@@ -1680,6 +1965,18 @@ async def on_command_error(ctx, error):
     ):
         return
 
+    await bot.log_action(
+        ctx.guild,
+        "Command Failed",
+        f"{ctx.author.mention} used `{ctx.prefix}{ctx.command}` in {ctx.channel.mention} — `{type(error).__name__}`: {str(error)[:200]}",
+        False,
+        [
+            ("By", f"{ctx.author} (`{ctx.author.id}`)"),
+            ("Channel", ctx.channel.mention),
+            ("Command", f"`{ctx.prefix}{ctx.command}`")
+        ]
+    )
+
     if isinstance(
         error,
         commands.MissingPermissions
@@ -1746,6 +2043,19 @@ async def on_tree_error(
     interaction: discord.Interaction,
     error
 ):
+
+    command_name = interaction.command.qualified_name if interaction.command else "unknown"
+
+    await bot.log_action(
+        interaction.guild,
+        "Slash Command Failed",
+        f"{interaction.user.mention} used `/{command_name}` — `{type(error).__name__}`: {str(error)[:200]}",
+        False,
+        [
+            ("By", f"{interaction.user} (`{interaction.user.id}`)"),
+            ("Command", f"`/{command_name}`")
+        ]
+    )
 
     if isinstance(error, commands.MissingPermissions):
 
